@@ -268,20 +268,20 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Build the interface for configuring the three plans and monthly intensity.
 
 **Tasks:**
-- [ ] Create `templates/setup/plans.html`:
+- [x] Create `templates/setup/plans.html`:
   - Firm Plan: Display only (fixed 150/month)
   - Optimistic Plan: Date picker for target completion date OR "X hours/day after date" option
   - Realistic Plan: Toggle for "lighter December" preset or custom intensity
-- [ ] Create `templates/setup/intensity.html`:
+- [x] Create `templates/setup/intensity.html` (combined with plans.html):
   - 12-month grid showing each month
   - Dropdown or toggle for each month's intensity (normal/light/very_light)
   - Presets: "Standard", "Light December", "Light Nov-Dec"
-- [ ] Implement routes for saving plan configurations
-- [ ] Run validation after setup complete:
+- [x] Implement routes for saving plan configurations
+- [x] Run validation after setup complete:
   - Call planning algorithm
   - Check for impossible configurations
   - Show warnings if any month requires >9.5 hours/day
-- [ ] Create `templates/setup/complete.html` - summary and "Go to Dashboard" button
+- [x] Create `templates/setup/complete.html` - summary and "Go to Dashboard" button
 
 **Acceptance Criteria:**
 - User can configure all three plans
@@ -291,7 +291,7 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Plan configs saved to database
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-02.** Implemented plans configuration as step 4 of the setup wizard. Created single-page `plans.html` template combining plan configuration and monthly intensity grid (decided against separate `intensity.html` for better UX). Three plan cards show: Firm (read-only, 150/month), Optimistic (configurable target date and maintenance hours), Realistic (uses intensity preferences). Monthly intensity grid has 12 dropdowns with color-coded backgrounds and three preset buttons (Standard, Light December, Light Nov-Dec). HTMX endpoints for real-time intensity updates and preset application. Validation warnings display inline using `validate_plan_feasibility()` from planner service. Created `complete.html` with configuration summary showing year, target, workdays, holidays/vacation counts, intensity distribution, and plan summaries with average daily hours. Added helper functions `get_all_plan_warnings()` and `calculate_setup_summary()` to setup routes. All 102 existing tests pass.
 
 ---
 

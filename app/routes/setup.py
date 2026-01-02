@@ -475,8 +475,125 @@ def delete_vacation(vacation_id: int):
 
 
 # ============================================================================
-# Plans Route (Placeholder for Sprint 3.3)
+# Plans Routes
 # ============================================================================
+
+
+def get_all_plan_warnings(year_config: YearConfig) -> list:
+    """
+    Get validation warnings for optimistic and realistic plans.
+
+    Checks each plan to see if any month requires more than 9.5 hours/day,
+    which would make the plan infeasible.
+
+    Args:
+        year_config: The YearConfig to validate plans for.
+
+    Returns:
+        A list of PlanWarning objects with plan_type attribute added.
+    """
+    from app.services.planner import (
+        calculate_monthly_targets_for_plan,
+        validate_plan_feasibility,
+    )
+
+    warnings = []
+    for plan_config in year_config.plan_configs:
+        # Only validate optimistic and realistic plans (firm is fixed)
+        if plan_config.plan_type in (PlanType.OPTIMISTIC, PlanType.REALISTIC):
+            monthly_targets = calculate_monthly_targets_for_plan(year_config, plan_config)
+            plan_warnings = validate_plan_feasibility(monthly_targets, year_config)
+            # Tag each warning with its plan type for display
+            for warning in plan_warnings:
+                warning.plan_type = plan_config.plan_type
+            warnings.extend(plan_warnings)
+    return warnings
+
+
+def calculate_setup_summary(year_config: YearConfig) -> dict:
+    """
+    Calculate summary statistics for the setup completion page.
+
+    Args:
+        year_config: The YearConfig to summarize.
+
+    Returns:
+        A dictionary with summary statistics including:
+        - holidays_count: Number of holidays configured
+        - vacation_count: Number of vacation days configured
+        - intensity_counts: Dict of intensity level counts
+        - plan_summaries: List of plan summary dicts
+    """
+    from app.services.planner import calculate_monthly_targets_for_plan
+    from app.services.calendar_utils import get_workdays_in_range
+
+    # Count holidays and vacation days
+    holidays_count = len(year_config.holidays)
+    vacation_count = len(year_config.vacation_days)
+
+    # Count intensity levels
+    intensity_counts = {'normal': 0, 'light': 0, 'very_light': 0}
+    for month_config in year_config.month_configs:
+        intensity_counts[month_config.intensity.value] += 1
+
+    # Calculate plan summaries
+    plan_summaries = []
+
+    # Get all holidays and vacation dates as sets
+    holiday_dates = {h.date for h in year_config.holidays}
+    vacation_dates = {v.date for v in year_config.vacation_days}
+
+    # Calculate total workdays in year
+    year_start = datetime.date(year_config.year, 1, 1)
+    year_end = datetime.date(year_config.year, 12, 31)
+    all_workdays = get_workdays_in_range(year_start, year_end, holiday_dates, vacation_dates)
+    total_workdays = len(all_workdays)
+
+    for plan_config in year_config.plan_configs:
+        monthly_targets = calculate_monthly_targets_for_plan(year_config, plan_config)
+        total_hours = sum(monthly_targets.values())
+
+        # Calculate average daily hours for this plan
+        if plan_config.plan_type == PlanType.FIRM:
+            avg_daily = year_config.annual_target / total_workdays if total_workdays > 0 else 0
+            description = "Fixed 150 hours/month"
+        elif plan_config.plan_type == PlanType.OPTIMISTIC:
+            # For optimistic, calculate based on workdays until target date
+            target_workdays = get_workdays_in_range(
+                year_start, plan_config.target_date, holiday_dates, vacation_dates
+            )
+            if len(target_workdays) > 0:
+                # Calculate hours before target
+                hours_before = sum(
+                    hours for month, hours in monthly_targets.items()
+                    if datetime.date(year_config.year, month, 1) <= plan_config.target_date
+                )
+                avg_daily = hours_before / len(target_workdays)
+            else:
+                avg_daily = 0
+            if plan_config.target_daily_hours_after:
+                description = f"Until {plan_config.target_date.strftime('%b %d')}, then {plan_config.target_daily_hours_after:.1f} hrs/day"
+            else:
+                description = f"Complete by {plan_config.target_date.strftime('%b %d')}"
+        else:  # REALISTIC
+            avg_daily = total_hours / total_workdays if total_workdays > 0 else 0
+            description = "Full year with intensity preferences"
+
+        plan_summaries.append({
+            'type': plan_config.plan_type,
+            'name': plan_config.plan_type.value.title(),
+            'avg_daily_hours': round(avg_daily, 1),
+            'description': description,
+            'target_date': plan_config.target_date,
+        })
+
+    return {
+        'holidays_count': holidays_count,
+        'vacation_count': vacation_count,
+        'intensity_counts': intensity_counts,
+        'plan_summaries': plan_summaries,
+        'total_workdays': total_workdays,
+    }
 
 
 @setup_bp.route('/plans')
@@ -484,7 +601,9 @@ def plans():
     """
     Display the plans configuration form.
 
-    This is step 4 of the setup wizard. Placeholder for Sprint 3.3.
+    This is step 4 of the setup wizard where users configure their three
+    billing plans (Firm, Optimistic, Realistic) and set monthly intensity
+    preferences.
     """
     # Get the most recently configured year
     year_config = YearConfig.query.order_by(YearConfig.updated_at.desc()).first()
@@ -493,6 +612,206 @@ def plans():
         flash('Please set up your year first.', 'error')
         return redirect(url_for('setup.index'))
 
-    # Placeholder: redirect to dashboard until Sprint 3.3 implements this
-    flash('Plans configuration coming in the next update! Your setup is complete for now.', 'info')
-    return redirect(url_for('dashboard.index'))
+    # Get plan configs as a dict keyed by plan type
+    plan_configs = {p.plan_type: p for p in year_config.plan_configs}
+
+    # Get month configs sorted by month
+    month_configs = sorted(year_config.month_configs, key=lambda m: m.month)
+
+    # Get validation warnings
+    warnings = get_all_plan_warnings(year_config)
+
+    return render_template(
+        'setup/plans.html',
+        year_config=year_config,
+        plan_configs=plan_configs,
+        month_configs=month_configs,
+        warnings=warnings,
+        PlanType=PlanType,  # Pass enum for template access
+    )
+
+
+@setup_bp.route('/plans', methods=['POST'])
+def save_plans():
+    """
+    Save plan configurations and proceed to setup completion.
+
+    Saves the optimistic plan target date and maintenance hours,
+    and all monthly intensity settings.
+    """
+    # Get the most recently configured year
+    year_config = YearConfig.query.order_by(YearConfig.updated_at.desc()).first()
+
+    if not year_config:
+        flash('Please set up your year first.', 'error')
+        return redirect(url_for('setup.index'))
+
+    # Update optimistic plan settings
+    optimistic = PlanConfig.query.filter_by(
+        year_config_id=year_config.id,
+        plan_type=PlanType.OPTIMISTIC
+    ).first()
+
+    target_date_str = request.form.get('optimistic_target_date')
+    if target_date_str:
+        try:
+            optimistic.target_date = datetime.datetime.strptime(
+                target_date_str, '%Y-%m-%d'
+            ).date()
+        except ValueError:
+            flash('Invalid target date format.', 'error')
+            return redirect(url_for('setup.plans'))
+
+    # Parse maintenance hours (optional)
+    maintenance_hours_str = request.form.get('maintenance_hours', '').strip()
+    if maintenance_hours_str:
+        try:
+            maintenance_hours = float(maintenance_hours_str)
+            if 0 <= maintenance_hours <= 9.5:
+                optimistic.target_daily_hours_after = maintenance_hours
+            else:
+                flash('Maintenance hours must be between 0 and 9.5.', 'error')
+                return redirect(url_for('setup.plans'))
+        except ValueError:
+            flash('Invalid maintenance hours value.', 'error')
+            return redirect(url_for('setup.plans'))
+    else:
+        optimistic.target_daily_hours_after = None
+
+    # Update all month intensities
+    for month in range(1, 13):
+        intensity_str = request.form.get(f'intensity_{month}', 'normal').lower()
+        month_config = MonthConfig.query.filter_by(
+            year_config_id=year_config.id,
+            month=month
+        ).first()
+        if month_config and intensity_str in ('normal', 'light', 'very_light'):
+            month_config.intensity = IntensityLevel(intensity_str)
+
+    db.session.commit()
+    flash('Plans configured successfully!', 'success')
+    return redirect(url_for('setup.complete'))
+
+
+@setup_bp.route('/intensity/<int:month>', methods=['POST'])
+def update_intensity(month: int):
+    """
+    Update a single month's intensity via HTMX.
+
+    Returns the updated validation warnings partial.
+    """
+    # Validate month
+    if month < 1 or month > 12:
+        response = make_response('', 400)
+        response.headers['HX-Trigger'] = json.dumps({
+            'showError': 'Invalid month'
+        })
+        return response
+
+    # Get the most recently configured year
+    year_config = YearConfig.query.order_by(YearConfig.updated_at.desc()).first()
+
+    if not year_config:
+        response = make_response('', 400)
+        response.headers['HX-Trigger'] = json.dumps({
+            'showError': 'No year configuration found'
+        })
+        return response
+
+    # Get intensity from request
+    intensity_str = request.form.get('intensity', 'normal').lower()
+    if intensity_str not in ('normal', 'light', 'very_light'):
+        response = make_response('', 400)
+        response.headers['HX-Trigger'] = json.dumps({
+            'showError': 'Invalid intensity level'
+        })
+        return response
+
+    # Update the month config
+    month_config = MonthConfig.query.filter_by(
+        year_config_id=year_config.id,
+        month=month
+    ).first()
+
+    if month_config:
+        month_config.intensity = IntensityLevel(intensity_str)
+        db.session.commit()
+
+    # Return updated warnings
+    warnings = get_all_plan_warnings(year_config)
+    return render_template('setup/partials/validation_warnings.html', warnings=warnings)
+
+
+@setup_bp.route('/intensity/preset', methods=['POST'])
+def apply_intensity_preset():
+    """
+    Apply an intensity preset to all months via HTMX.
+
+    Available presets:
+    - standard: All months set to NORMAL
+    - light_december: December set to VERY_LIGHT, others NORMAL
+    - light_nov_dec: November and December set to LIGHT, others NORMAL
+
+    Returns the updated intensity grid partial with warnings.
+    """
+    # Get the most recently configured year
+    year_config = YearConfig.query.order_by(YearConfig.updated_at.desc()).first()
+
+    if not year_config:
+        response = make_response('', 400)
+        response.headers['HX-Trigger'] = json.dumps({
+            'showError': 'No year configuration found'
+        })
+        return response
+
+    preset = request.form.get('preset', 'standard').lower()
+
+    # Apply preset to all months
+    for month_config in year_config.month_configs:
+        if preset == 'standard':
+            month_config.intensity = IntensityLevel.NORMAL
+        elif preset == 'light_december':
+            if month_config.month == 12:
+                month_config.intensity = IntensityLevel.VERY_LIGHT
+            else:
+                month_config.intensity = IntensityLevel.NORMAL
+        elif preset == 'light_nov_dec':
+            if month_config.month >= 11:
+                month_config.intensity = IntensityLevel.LIGHT
+            else:
+                month_config.intensity = IntensityLevel.NORMAL
+
+    db.session.commit()
+
+    # Get sorted month configs and warnings for the response
+    month_configs = sorted(year_config.month_configs, key=lambda m: m.month)
+    warnings = get_all_plan_warnings(year_config)
+
+    return render_template(
+        'setup/partials/intensity_grid.html',
+        month_configs=month_configs,
+        warnings=warnings,
+        year_config=year_config,
+    )
+
+
+@setup_bp.route('/complete')
+def complete():
+    """
+    Display the setup completion page with a summary of configuration.
+    """
+    # Get the most recently configured year
+    year_config = YearConfig.query.order_by(YearConfig.updated_at.desc()).first()
+
+    if not year_config:
+        flash('Please set up your year first.', 'error')
+        return redirect(url_for('setup.index'))
+
+    # Calculate summary statistics
+    summary = calculate_setup_summary(year_config)
+
+    return render_template(
+        'setup/complete.html',
+        year_config=year_config,
+        summary=summary,
+    )

@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Plans | Billable Hours Planner{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Configure Your Plans</h1>
+        <p class="mt-2 text-gray-600">
+            Review your three billing plans and set monthly billing intensity preferences.
+        </p>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="mb-8">
+        <div class="flex items-center">
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-green-500 text-white rounded-full text-sm font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </span>
+                <span class="ml-2 text-sm font-medium text-green-600">Year & Target</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-green-500"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-green-500 text-white rounded-full text-sm font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </span>
+                <span class="ml-2 text-sm font-medium text-green-600">Holidays</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-green-500"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-green-500 text-white rounded-full text-sm font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </span>
+                <span class="ml-2 text-sm font-medium text-green-600">Vacation</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-primary-600"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-primary-600 text-white rounded-full text-sm font-medium">
+                    4
+                </span>
+                <span class="ml-2 text-sm font-medium text-primary-600">Plans</span>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('setup.save_plans') }}">
+        <!-- Section 1: Three Plans -->
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 mb-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Your Three Billing Plans</h2>
+            <p class="text-sm text-gray-600 mb-6">
+                The app tracks your progress against three different plans. Each plan helps you understand your billing from a different perspective.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Firm Plan Card -->
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div class="flex items-center mb-2">
+                        <span class="inline-flex items-center justify-center w-8 h-8 bg-gray-600 text-white rounded-full text-sm font-bold">
+                            F
+                        </span>
+                        <h3 class="ml-2 text-sm font-semibold text-gray-900">Firm Requirements</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">
+                        Fixed baseline: 150 hours/month, 450 hours/quarter.
+                    </p>
+                    <div class="text-xs text-gray-500">
+                        <div class="flex justify-between">
+                            <span>Monthly target:</span>
+                            <span class="font-medium">150 hours</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Target date:</span>
+                            <span class="font-medium">Dec 31, {{ year_config.year }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Optimistic Plan Card -->
+                <div class="border border-primary-200 rounded-lg p-4 bg-primary-50">
+                    <div class="flex items-center mb-2">
+                        <span class="inline-flex items-center justify-center w-8 h-8 bg-primary-600 text-white rounded-full text-sm font-bold">
+                            O
+                        </span>
+                        <h3 class="ml-2 text-sm font-semibold text-gray-900">Optimistic Plan</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">
+                        Front-load billing to finish early and enjoy lighter holidays.
+                    </p>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label for="optimistic_target_date" class="block text-xs font-medium text-gray-700 mb-1">
+                                Target completion date
+                            </label>
+                            <input
+                                type="date"
+                                id="optimistic_target_date"
+                                name="optimistic_target_date"
+                                value="{{ plan_configs[PlanType.OPTIMISTIC].target_date.strftime('%Y-%m-%d') }}"
+                                min="{{ year_config.year }}-01-01"
+                                max="{{ year_config.year }}-12-31"
+                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                required
+                            >
+                        </div>
+                        <div>
+                            <label for="maintenance_hours" class="block text-xs font-medium text-gray-700 mb-1">
+                                Daily hours after target <span class="text-gray-400">(optional)</span>
+                            </label>
+                            <input
+                                type="number"
+                                id="maintenance_hours"
+                                name="maintenance_hours"
+                                value="{{ plan_configs[PlanType.OPTIMISTIC].target_daily_hours_after or '' }}"
+                                min="0"
+                                max="9.5"
+                                step="0.5"
+                                placeholder="e.g., 4"
+                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            >
+                            <p class="mt-1 text-xs text-gray-500">
+                                Leave blank for zero hours after target date
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Realistic Plan Card -->
+                <div class="border border-green-200 rounded-lg p-4 bg-green-50">
+                    <div class="flex items-center mb-2">
+                        <span class="inline-flex items-center justify-center w-8 h-8 bg-green-600 text-white rounded-full text-sm font-bold">
+                            R
+                        </span>
+                        <h3 class="ml-2 text-sm font-semibold text-gray-900">Realistic Plan</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">
+                        Balanced approach using the full year, respecting your intensity preferences below.
+                    </p>
+                    <div class="text-xs text-gray-500">
+                        <div class="flex justify-between">
+                            <span>Annual target:</span>
+                            <span class="font-medium">{{ "{:,}".format(year_config.annual_target) }} hours</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Target date:</span>
+                            <span class="font-medium">Dec 31, {{ year_config.year }}</span>
+                        </div>
+                        <div class="flex justify-between mt-2">
+                            <span>Intensity:</span>
+                            <span class="font-medium text-green-700">Uses settings below</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Monthly Intensity -->
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 mb-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-2">Monthly Billing Intensity</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                Set how heavily you plan to bill each month. Light months receive proportionally fewer hours.
+                <span class="font-medium">Normal = 100%, Light = 75%, Very Light = 50%</span>
+            </p>
+
+            {% include "setup/partials/intensity_grid.html" %}
+        </div>
+
+        <!-- Section 3: Validation Warnings -->
+        <div class="mb-6">
+            {% include "setup/partials/validation_warnings.html" %}
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex items-center justify-between">
+            <a href="{{ url_for('setup.vacation') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                <span class="inline-flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Back to Vacation
+                </span>
+            </a>
+            <button
+                type="submit"
+                class="inline-flex items-center px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+            >
+                Complete Setup
+                <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </button>
+        </div>
+    </form>
+
+    <!-- Info Box -->
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex">
+            <svg class="w-5 h-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+            <p class="ml-3 text-sm text-blue-700">
+                You can always come back and adjust these settings later. Your billing data will be recalculated automatically.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Handle HTMX errors via HX-Trigger
+    document.body.addEventListener('showError', function(evt) {
+        alert(evt.detail.value || 'An error occurred');
+    });
+</script>
+{% endblock %}

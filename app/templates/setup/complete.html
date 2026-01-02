@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Complete | Billable Hours Planner{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Success Header -->
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-900">Setup Complete!</h1>
+        <p class="mt-2 text-gray-600">
+            Your billing year for {{ year_config.year }} is ready to go.
+        </p>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 mb-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Configuration Summary</h2>
+
+        <div class="space-y-4">
+            <!-- Year Info -->
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Year</span>
+                <span class="font-medium text-gray-900">{{ year_config.year }}</span>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Annual Target</span>
+                <span class="font-medium text-gray-900">{{ "{:,}".format(year_config.annual_target) }} hours</span>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Total Workdays</span>
+                <span class="font-medium text-gray-900">{{ summary.total_workdays }} days</span>
+            </div>
+
+            <!-- Days Off -->
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Holidays</span>
+                <span class="font-medium text-gray-900">{{ summary.holidays_count }} days</span>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Vacation Days</span>
+                <span class="font-medium text-gray-900">{{ summary.vacation_count }} days</span>
+            </div>
+
+            <!-- Intensity Distribution -->
+            <div class="py-2 border-b border-gray-100">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-gray-600">Monthly Intensity</span>
+                </div>
+                <div class="flex gap-3 text-sm">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800">
+                        Normal: {{ summary.intensity_counts.normal }}
+                    </span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
+                        Light: {{ summary.intensity_counts.light }}
+                    </span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800">
+                        Very Light: {{ summary.intensity_counts.very_light }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plan Summaries -->
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 mb-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Your Billing Plans</h2>
+
+        <div class="space-y-4">
+            {% for plan in summary.plan_summaries %}
+                <div class="flex items-start justify-between py-3 {% if not loop.last %}border-b border-gray-100{% endif %}">
+                    <div>
+                        <div class="flex items-center">
+                            {% if plan.type.value == 'firm' %}
+                                <span class="inline-flex items-center justify-center w-6 h-6 bg-gray-600 text-white rounded-full text-xs font-bold mr-2">F</span>
+                            {% elif plan.type.value == 'optimistic' %}
+                                <span class="inline-flex items-center justify-center w-6 h-6 bg-primary-600 text-white rounded-full text-xs font-bold mr-2">O</span>
+                            {% else %}
+                                <span class="inline-flex items-center justify-center w-6 h-6 bg-green-600 text-white rounded-full text-xs font-bold mr-2">R</span>
+                            {% endif %}
+                            <span class="font-medium text-gray-900">{{ plan.name }} Plan</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-1 ml-8">{{ plan.description }}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-lg font-semibold
+                            {% if plan.avg_daily_hours > 9.0 %}
+                                text-red-600
+                            {% elif plan.avg_daily_hours > 8.0 %}
+                                text-yellow-600
+                            {% else %}
+                                text-green-600
+                            {% endif %}
+                        ">
+                            {{ plan.avg_daily_hours }} hrs/day
+                        </span>
+                        <p class="text-xs text-gray-500">average</p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row gap-4">
+        <a
+            href="{{ url_for('dashboard.index') }}"
+            class="flex-1 inline-flex items-center justify-center px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+        >
+            Go to Dashboard
+            <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+        <a
+            href="{{ url_for('setup.index') }}"
+            class="flex-1 inline-flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+        >
+            <svg class="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+            Edit Settings
+        </a>
+    </div>
+
+    <!-- Info Box -->
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex">
+            <svg class="w-5 h-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+            <p class="ml-3 text-sm text-blue-700">
+                You can adjust your settings anytime by visiting the Setup page. Your billing data will automatically recalculate.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

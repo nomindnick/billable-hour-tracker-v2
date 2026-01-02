@@ -1,0 +1,97 @@
+{#
+    Monthly Intensity Grid Partial
+
+    Displays a 2-column grid of all 12 months with intensity dropdowns.
+    Each dropdown triggers an HTMX update to refresh validation warnings.
+
+    Variables:
+        month_configs: list of MonthConfig objects, sorted by month
+        year_config: YearConfig object (needed for HTMX targets)
+        warnings: list of PlanWarning objects (optional, for inline display)
+#}
+
+{% set month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'] %}
+
+<div id="intensity-grid">
+    <!-- Preset Buttons -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <button
+            type="button"
+            hx-post="{{ url_for('setup.apply_intensity_preset') }}"
+            hx-vals='{"preset": "standard"}'
+            hx-target="#intensity-grid"
+            hx-swap="outerHTML"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+        >
+            Standard
+        </button>
+        <button
+            type="button"
+            hx-post="{{ url_for('setup.apply_intensity_preset') }}"
+            hx-vals='{"preset": "light_december"}'
+            hx-target="#intensity-grid"
+            hx-swap="outerHTML"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+        >
+            Light December
+        </button>
+        <button
+            type="button"
+            hx-post="{{ url_for('setup.apply_intensity_preset') }}"
+            hx-vals='{"preset": "light_nov_dec"}'
+            hx-target="#intensity-grid"
+            hx-swap="outerHTML"
+            class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+        >
+            Light Nov-Dec
+        </button>
+    </div>
+
+    <!-- Month Grid (2 columns) -->
+    <div class="grid grid-cols-2 gap-x-6 gap-y-3">
+        {% for month_config in month_configs %}
+            <div class="flex items-center justify-between">
+                <label
+                    for="intensity_{{ month_config.month }}"
+                    class="text-sm font-medium text-gray-700 w-24"
+                >
+                    {{ month_names[month_config.month] }}
+                </label>
+                <select
+                    id="intensity_{{ month_config.month }}"
+                    name="intensity_{{ month_config.month }}"
+                    hx-post="{{ url_for('setup.update_intensity', month=month_config.month) }}"
+                    hx-vals='js:{"intensity": this.value}'
+                    hx-target="#validation-section"
+                    hx-swap="outerHTML"
+                    class="block w-32 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500
+                        {% if month_config.intensity.value == 'normal' %}
+                            bg-white
+                        {% elif month_config.intensity.value == 'light' %}
+                            bg-yellow-50
+                        {% else %}
+                            bg-orange-50
+                        {% endif %}"
+                >
+                    <option value="normal" {% if month_config.intensity.value == 'normal' %}selected{% endif %}>
+                        Normal
+                    </option>
+                    <option value="light" {% if month_config.intensity.value == 'light' %}selected{% endif %}>
+                        Light
+                    </option>
+                    <option value="very_light" {% if month_config.intensity.value == 'very_light' %}selected{% endif %}>
+                        Very Light
+                    </option>
+                </select>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Inline Warnings (when grid is updated via HTMX) -->
+    {% if warnings is defined %}
+        <div class="mt-6">
+            {% include "setup/partials/validation_warnings.html" %}
+        </div>
+    {% endif %}
+</div>

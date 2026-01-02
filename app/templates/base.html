@@ -49,14 +49,29 @@
                     </a>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <!-- Navigation links will be added as features are built -->
                     <a href="/" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                         Dashboard
+                    </a>
+                    <a href="/setup" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        Setup
                     </a>
                 </div>
             </div>
         </div>
     </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+            {% for category, message in messages %}
+            <div class="mb-2 rounded-lg p-4 {% if category == 'error' %}bg-red-50 text-red-700 border border-red-200{% elif category == 'success' %}bg-green-50 text-green-700 border border-green-200{% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
 
     <!-- Main content area -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

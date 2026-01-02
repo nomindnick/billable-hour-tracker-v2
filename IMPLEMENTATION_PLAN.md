@@ -202,20 +202,20 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Build the first step of setup: selecting year and annual target.
 
 **Tasks:**
-- [ ] Create base template (`templates/base.html`) with:
+- [x] Create base template (`templates/base.html`) with:
   - Tailwind CSS via CDN
   - HTMX via CDN
   - Basic layout structure
   - Navigation placeholder
-- [ ] Create `templates/setup/year.html`:
+- [x] Create `templates/setup/year.html`:
   - Year selector (default to current year)
   - Annual target input (default 1800)
   - "Next" button
-- [ ] Implement routes in `routes/setup.py`:
+- [x] Implement routes in `routes/setup.py`:
   - GET `/setup` - show year selection
   - POST `/setup/year` - save and proceed
-- [ ] Create or update YearConfig on submission
-- [ ] Style with Tailwind for clean, modern look
+- [x] Create or update YearConfig on submission
+- [x] Style with Tailwind for clean, modern look
 
 **Acceptance Criteria:**
 - User can select year and set annual target
@@ -224,7 +224,7 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Looks clean and professional
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-02.** Implemented the first setup wizard step with year selection and annual target input. Base template already existed from Sprint 1.1 with Tailwind CSS v4 and HTMX v1.9.10 via CDN. Created `app/templates/setup/year.html` with a clean card-based form, 4-step progress indicator, year dropdown (current ±1 year), annual target input with validation (1000-3000 range), and quick reference info. Implemented routes in `app/routes/setup.py`: GET `/setup/` displays the form, POST `/setup/year` validates input and creates/updates YearConfig. On new config creation, also creates 12 default MonthConfig records (all NORMAL intensity) and 3 default PlanConfig records (Firm=Dec 31, Realistic=Dec 31, Optimistic=Nov 27). Added flash message support to base template and Setup nav link. Holidays route temporarily redirects to dashboard pending Sprint 3.2.
 
 ---
 

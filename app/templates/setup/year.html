@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Year & Target | Billable Hours Planner{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Set Up Your Billing Year</h1>
+        <p class="mt-2 text-gray-600">
+            Let's configure your annual billable hours plan. This should only take a few minutes.
+        </p>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="mb-8">
+        <div class="flex items-center">
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-primary-600 text-white rounded-full text-sm font-medium">
+                    1
+                </span>
+                <span class="ml-2 text-sm font-medium text-primary-600">Year & Target</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-gray-200"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+                    2
+                </span>
+                <span class="ml-2 text-sm font-medium text-gray-500">Holidays</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-gray-200"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+                    3
+                </span>
+                <span class="ml-2 text-sm font-medium text-gray-500">Vacation</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-gray-200"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+                    4
+                </span>
+                <span class="ml-2 text-sm font-medium text-gray-500">Plans</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Form Card -->
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+        <form action="{{ url_for('setup.save_year') }}" method="POST" class="p-6 space-y-6">
+            <!-- Year Selection -->
+            <div>
+                <label for="year" class="block text-sm font-medium text-gray-700 mb-2">
+                    Which year are you planning?
+                </label>
+                <select
+                    id="year"
+                    name="year"
+                    class="block w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    required
+                >
+                    {% for year in year_options %}
+                    <option
+                        value="{{ year }}"
+                        {% if existing_config and existing_config.year == year %}
+                        selected
+                        {% elif not existing_config and year == current_year %}
+                        selected
+                        {% endif %}
+                    >
+                        {{ year }}
+                        {% if year == current_year %}(Current Year){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Annual Target Input -->
+            <div>
+                <label for="annual_target" class="block text-sm font-medium text-gray-700 mb-2">
+                    Annual billable hours target
+                </label>
+                <div class="relative">
+                    <input
+                        type="number"
+                        id="annual_target"
+                        name="annual_target"
+                        min="1000"
+                        max="3000"
+                        step="50"
+                        value="{{ existing_config.annual_target if existing_config else 1800 }}"
+                        class="block w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        required
+                    >
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                        <span class="text-gray-500">hours</span>
+                    </div>
+                </div>
+                <p class="mt-2 text-sm text-gray-500">
+                    Most firms require 1,800-2,000 hours. Enter your firm's requirement or personal goal.
+                </p>
+            </div>
+
+            <!-- Quick Reference -->
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Quick reference for 1,800 hours:</h3>
+                <ul class="text-sm text-gray-600 space-y-1">
+                    <li>• <strong>150 hours/month</strong> average</li>
+                    <li>• <strong>450 hours/quarter</strong> for bonus eligibility</li>
+                    <li>• <strong>~7.2 hours/day</strong> on workdays (assuming ~250 workdays)</li>
+                </ul>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex items-center justify-between pt-4">
+                <a href="{{ url_for('dashboard.index') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                    Cancel
+                </a>
+                <button
+                    type="submit"
+                    class="inline-flex items-center px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                >
+                    Next: Add Holidays
+                    <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Existing Config Note -->
+    {% if existing_config %}
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex">
+            <svg class="w-5 h-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+            <p class="ml-3 text-sm text-blue-700">
+                You already have a configuration for {{ existing_config.year }} with a target of
+                <strong>{{ existing_config.annual_target }}</strong> hours.
+                Submitting this form will update the target if you change it.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

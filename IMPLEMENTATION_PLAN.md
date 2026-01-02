@@ -103,13 +103,13 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Build utilities for calculating workdays, accounting for weekends, holidays, and vacation.
 
 **Tasks:**
-- [ ] Create `services/calendar_utils.py`
-- [ ] Implement `get_workdays_in_month(year, month, holidays, vacation_days)` → list of dates
-- [ ] Implement `get_workdays_in_range(start_date, end_date, holidays, vacation_days)` → list of dates
-- [ ] Implement `is_workday(date, holidays, vacation_days)` → boolean
-- [ ] Implement `get_remaining_workdays_in_month(from_date, holidays, vacation_days)` → list of dates
-- [ ] Handle edge cases: month boundaries, year boundaries
-- [ ] Write unit tests for all calendar functions
+- [x] Create `services/calendar_utils.py`
+- [x] Implement `get_workdays_in_month(year, month, holidays, vacation_days)` → list of dates
+- [x] Implement `get_workdays_in_range(start_date, end_date, holidays, vacation_days)` → list of dates
+- [x] Implement `is_workday(date, holidays, vacation_days)` → boolean
+- [x] Implement `get_remaining_workdays_in_month(from_date, holidays, vacation_days)` → list of dates
+- [x] Handle edge cases: month boundaries, year boundaries
+- [x] Write unit tests for all calendar functions
 
 **Acceptance Criteria:**
 - Functions correctly identify weekends as non-workdays
@@ -118,7 +118,7 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Edge cases (empty months, all holidays) handled gracefully
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-02.** Created `app/services/calendar_utils.py` with 4 functions: `is_workday()`, `get_workdays_in_month()`, `get_workdays_in_range()`, and `get_remaining_workdays_in_month()`. All functions use `set[datetime.date]` for O(1) holiday/vacation lookup. Functions use Python's `calendar.monthrange()` for month boundary handling. Created `tests/test_calendar_utils.py` with 40 comprehensive unit tests covering weekends, holidays, vacation days, month/year boundaries, leap years, and edge cases. All tests pass.
 
 ---
 

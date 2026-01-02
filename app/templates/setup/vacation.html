@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Vacation | Billable Hours Planner{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Add Vacation Days</h1>
+        <p class="mt-2 text-gray-600">
+            Add any planned vacation days or time off. These days will be excluded from your billing calculations.
+        </p>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="mb-8">
+        <div class="flex items-center">
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-green-500 text-white rounded-full text-sm font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </span>
+                <span class="ml-2 text-sm font-medium text-green-600">Year & Target</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-green-500"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-green-500 text-white rounded-full text-sm font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </span>
+                <span class="ml-2 text-sm font-medium text-green-600">Holidays</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-primary-600"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-primary-600 text-white rounded-full text-sm font-medium">
+                    3
+                </span>
+                <span class="ml-2 text-sm font-medium text-primary-600">Vacation</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-gray-200"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+                    4
+                </span>
+                <span class="ml-2 text-sm font-medium text-gray-500">Plans</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Left Column: Add Vacation Form -->
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Add a Vacation Day</h2>
+
+            <form
+                hx-post="{{ url_for('setup.add_vacation') }}"
+                hx-target="#vacation-list"
+                hx-swap="beforeend"
+                hx-on::after-request="if(event.detail.successful) this.reset()"
+                class="space-y-4"
+            >
+                <div>
+                    <label for="date" class="block text-sm font-medium text-gray-700 mb-1">
+                        Date
+                    </label>
+                    <input
+                        type="date"
+                        id="date"
+                        name="date"
+                        min="{{ year_config.year }}-01-01"
+                        max="{{ year_config.year }}-12-31"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label for="note" class="block text-sm font-medium text-gray-700 mb-1">
+                        Note <span class="text-gray-400">(optional)</span>
+                    </label>
+                    <input
+                        type="text"
+                        id="note"
+                        name="note"
+                        placeholder="e.g., Hawaii trip"
+                        maxlength="200"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                >
+                    Add Vacation Day
+                </button>
+            </form>
+
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                <p class="text-sm text-gray-500">
+                    You can add vacation days one at a time. For multi-day trips, add each day separately.
+                </p>
+            </div>
+        </div>
+
+        <!-- Right Column: Vacation List -->
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">
+                Vacation Days for {{ year_config.year }}
+                <span class="text-sm font-normal text-gray-500">({{ vacation_days|length }} added)</span>
+            </h2>
+
+            <div id="vacation-list" class="space-y-0 divide-y divide-gray-100">
+                {% if vacation_days %}
+                    {% for vacation in vacation_days %}
+                        {% include "setup/partials/vacation_item.html" %}
+                    {% endfor %}
+                {% else %}
+                    <p id="empty-state" class="text-gray-500 text-sm py-4">
+                        No vacation days added yet. Add days you plan to take off this year.
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="mt-8 flex items-center justify-between">
+        <a href="{{ url_for('setup.holidays') }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <span class="inline-flex items-center">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Back to Holidays
+            </span>
+        </a>
+        <a
+            href="{{ url_for('setup.plans') }}"
+            class="inline-flex items-center px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+        >
+            Next: Configure Plans
+            <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+    </div>
+
+    <!-- Info Box -->
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex">
+            <svg class="w-5 h-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+            <p class="ml-3 text-sm text-blue-700">
+                Don't worry if you're not sure of all your vacation dates yet. You can always come back and add more later as you plan time off.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Handle HTMX errors via HX-Trigger
+    document.body.addEventListener('showError', function(evt) {
+        alert(evt.detail.value || 'An error occurred');
+    });
+
+    // Remove empty state when first item is added
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        const emptyState = document.getElementById('empty-state');
+        if (emptyState && document.querySelectorAll('.vacation-item').length > 0) {
+            emptyState.remove();
+        }
+    });
+</script>
+{% endblock %}

@@ -234,21 +234,21 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Build the interface for adding holidays and vacation days.
 
 **Tasks:**
-- [ ] Create `templates/setup/holidays.html`:
+- [x] Create `templates/setup/holidays.html`:
   - Date picker for adding holidays
   - Optional name field
   - List of added holidays with delete option
   - "Add common holidays" helper (optional but nice)
-- [ ] Create `templates/setup/vacation.html`:
+- [x] Create `templates/setup/vacation.html`:
   - Date picker or date range for vacation
   - Optional note field
   - List of vacation days with delete option
-- [ ] Implement HTMX interactions for add/remove without full page reload
-- [ ] Implement routes:
+- [x] Implement HTMX interactions for add/remove without full page reload
+- [x] Implement routes:
   - GET/POST `/setup/holidays`
   - GET/POST `/setup/vacation`
   - DELETE endpoints for removing dates
-- [ ] Validate dates are within selected year
+- [x] Validate dates are within selected year
 
 **Acceptance Criteria:**
 - User can add/remove holidays
@@ -258,7 +258,7 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Clear visual feedback on actions
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-02.** Implemented holidays and vacation setup pages with full HTMX interactivity. Created templates: `holidays.html`, `vacation.html`, and partials `holiday_item.html`, `vacation_item.html` for dynamic list updates. Routes implemented: GET/POST/DELETE for both holidays and vacation days, plus "Add Common US Holidays" feature that adds 11 standard US holidays (New Year's Day, MLK Day, Presidents Day, Memorial Day, Independence Day, Labor Day, Thanksgiving, Day After Thanksgiving, Christmas Eve, Christmas Day, New Year's Eve). Progress indicator shows completed steps with green checkmarks. All dates validated to be within the configured year. Duplicate dates are prevented. Plans step added as placeholder (redirects to dashboard with info message).
 
 ---
 

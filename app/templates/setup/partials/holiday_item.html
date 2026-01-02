@@ -1,0 +1,17 @@
+<div class="holiday-item flex items-center justify-between py-3">
+    <div class="flex items-center">
+        <span class="font-medium text-gray-900">{{ holiday.date.strftime('%b %d, %Y') }}</span>
+        {% if holiday.name %}
+        <span class="ml-2 text-gray-500">- {{ holiday.name }}</span>
+        {% endif %}
+    </div>
+    <button
+        hx-delete="{{ url_for('setup.delete_holiday', holiday_id=holiday.id) }}"
+        hx-target="closest .holiday-item"
+        hx-swap="outerHTML"
+        hx-confirm="Remove this holiday?"
+        class="text-red-500 hover:text-red-700 text-sm font-medium"
+    >
+        Remove
+    </button>
+</div>

@@ -128,19 +128,19 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Implement the algorithm that distributes annual target hours across months based on workdays and intensity settings.
 
 **Tasks:**
-- [ ] Create `services/planner.py`
-- [ ] Define intensity weights: normal=1.0, light=0.75, very_light=0.5
-- [ ] Implement `calculate_monthly_targets(year_config)`:
+- [x] Create `services/planner.py`
+- [x] Define intensity weights: normal=1.0, light=0.75, very_light=0.5
+- [x] Implement `calculate_monthly_targets(year_config)`:
   - Get workdays per month
   - Apply intensity weights to get "weighted workdays"
   - Distribute annual target proportionally
   - Return dict of {month: target_hours}
-- [ ] Implement `calculate_monthly_targets_for_plan(year_config, plan_config)`:
+- [x] Implement `calculate_monthly_targets_for_plan(year_config, plan_config)`:
   - Handle Optimistic plan's earlier end date
   - Handle Realistic plan's standard distribution
   - Handle Firm plan's fixed 150/month baseline
-- [ ] Implement validation: check if any month requires >9.5 hours/day average
-- [ ] Write comprehensive unit tests with various scenarios:
+- [x] Implement validation: check if any month requires >9.5 hours/day average
+- [x] Write comprehensive unit tests with various scenarios:
   - Normal year with standard settings
   - Year with many holidays in one month
   - Aggressive optimistic plan
@@ -154,7 +154,7 @@ This implementation follows a progressive approach: establish the foundation, bu
 - All unit tests pass
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-02.** Implemented the full monthly distribution algorithm in `app/services/planner.py`. Key functions: `calculate_monthly_targets()` distributes hours proportionally based on weighted workdays (intensity × workday count), `calculate_monthly_targets_for_plan()` handles plan-specific logic (Firm=fixed 150/month, Realistic=full year weighted, Optimistic=compressed timeline with optional maintenance hours), `validate_plan_feasibility()` checks no month requires >9.5 hours/day. Added `PlanWarning` and `MonthlyTarget` dataclasses for structured return values. Created comprehensive test suite in `tests/test_planner.py` with 29 tests covering intensity weights, helper functions, core algorithm, plan-specific logic, validation, and integration scenarios. All 69 tests pass (40 calendar_utils + 29 planner).
 
 ---
 

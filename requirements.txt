@@ -1,0 +1,12 @@
+# Billable Hours Planner - Dependencies
+# Python 3.11+
+
+# Web framework
+Flask>=3.0.0
+
+# Database ORM
+SQLAlchemy>=2.0.0
+Flask-SQLAlchemy>=3.1.0
+
+# Date handling utilities
+python-dateutil>=2.8.0

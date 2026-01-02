@@ -164,21 +164,21 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Implement the dynamic daily target calculation that adjusts based on actual hours billed.
 
 **Tasks:**
-- [ ] Create `services/calculator.py`
-- [ ] Implement `calculate_daily_target(year_config, plan_config, date)`:
+- [x] Create `services/calculator.py`
+- [x] Implement `calculate_daily_target(year_config, plan_config, date)`:
   - Get monthly target for the month
   - Get hours already billed this month
   - Get remaining workdays in month
   - Calculate: (monthly_target - hours_billed) / remaining_days
   - Cap at 9.5 hours
   - Return target and a flag if catch-up is recommended
-- [ ] Implement `calculate_plan_status(year_config, plan_config)`:
+- [x] Implement `calculate_plan_status(year_config, plan_config)`:
   - Calculate expected hours to date based on plan
   - Compare to actual hours billed
   - Return: hours_ahead_or_behind, status_label ("On track", "Slightly behind", etc.)
-- [ ] Implement `calculate_hours_banked(year_config, plan_config)`:
+- [x] Implement `calculate_hours_banked(year_config, plan_config)`:
   - Sum of (actual - target) for days where actual > target
-- [ ] Write unit tests for daily calculations
+- [x] Write unit tests for daily calculations
 
 **Acceptance Criteria:**
 - Daily targets correctly recalculate based on hours billed
@@ -188,7 +188,7 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Catch-up flag triggers when daily target would exceed 9.5
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-02.** Implemented the full calculator service in `app/services/calculator.py` with 3 core functions (`calculate_daily_target()`, `calculate_plan_status()`, `calculate_hours_banked()`) and 3 helper functions (`get_hours_billed_in_month()`, `get_hours_billed_to_date()`, `get_expected_hours_to_date()`). Two dataclasses created: `DailyTargetResult` and `PlanStatus`. Status thresholds configured per spec: 5 hours for "slightly behind", 15 hours for "catch-up recommended". Daily targets capped at 9.5 hours with catch-up flag. Created `tests/test_calculator.py` with 33 unit tests covering all functions, edge cases, and integration scenarios. All 102 tests pass (40 calendar_utils + 29 planner + 33 calculator).
 
 ---
 

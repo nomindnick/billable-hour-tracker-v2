@@ -20,7 +20,7 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Set up the project structure, dependencies, and basic Flask application.
 
 **Tasks:**
-- [ ] Create project directory structure:
+- [x] Create project directory structure:
   ```
   billable-hours/
   ├── app/
@@ -46,15 +46,15 @@ This implementation follows a progressive approach: establish the foundation, bu
   ├── requirements.txt
   └── run.py
   ```
-- [ ] Create `requirements.txt` with initial dependencies:
+- [x] Create `requirements.txt` with initial dependencies:
   - Flask
   - SQLAlchemy
   - Flask-SQLAlchemy
   - python-dateutil
-- [ ] Set up `config.py` with development configuration
-- [ ] Create application factory in `app/__init__.py`
-- [ ] Create `run.py` entry point
-- [ ] Verify app starts with `flask run` and shows a test page
+- [x] Set up `config.py` with development configuration
+- [x] Create application factory in `app/__init__.py`
+- [x] Create `run.py` entry point
+- [x] Verify app starts with `flask run` and shows a test page
 
 **Acceptance Criteria:**
 - Running `python run.py` starts a Flask development server
@@ -62,7 +62,7 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Project structure matches the layout above
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed.** Project structure created with Flask application factory pattern. All blueprints registered (dashboard, setup, entries). Configuration supports development and testing environments. Virtual environment set up with all dependencies installed.
 
 ---
 
@@ -72,16 +72,16 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Define all SQLAlchemy models and set up database initialization.
 
 **Tasks:**
-- [ ] Implement `YearConfig` model with fields: id, year, annual_target, created_at, updated_at
-- [ ] Implement `Holiday` model with fields: id, year_config_id (FK), date, name
-- [ ] Implement `VacationDay` model with fields: id, year_config_id (FK), date, note
-- [ ] Implement `MonthConfig` model with fields: id, year_config_id (FK), month, intensity (enum)
-- [ ] Implement `PlanConfig` model with fields: id, year_config_id (FK), plan_type (enum), target_date, target_daily_hours_after
-- [ ] Implement `DailyEntry` model with fields: id, year_config_id (FK), date, hours_billed, created_at, updated_at
-- [ ] Implement `CatchUpSprint` model with fields per SPEC
-- [ ] Create database initialization command (`flask init-db`)
-- [ ] Add proper indexes (date fields, foreign keys)
-- [ ] Test that models can be created and queried
+- [x] Implement `YearConfig` model with fields: id, year, annual_target, created_at, updated_at
+- [x] Implement `Holiday` model with fields: id, year_config_id (FK), date, name
+- [x] Implement `VacationDay` model with fields: id, year_config_id (FK), date, note
+- [x] Implement `MonthConfig` model with fields: id, year_config_id (FK), month, intensity (enum)
+- [x] Implement `PlanConfig` model with fields: id, year_config_id (FK), plan_type (enum), target_date, target_daily_hours_after
+- [x] Implement `DailyEntry` model with fields: id, year_config_id (FK), date, hours_billed, created_at, updated_at
+- [x] Implement `CatchUpSprint` model with fields per SPEC
+- [x] Create database initialization command (`flask init-db`)
+- [x] Add proper indexes (date fields, foreign keys)
+- [x] Test that models can be created and queried
 
 **Acceptance Criteria:**
 - All models defined with proper relationships
@@ -89,7 +89,7 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Can create and query records in Python shell
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-02.** All 7 models implemented using SQLAlchemy 2.0 style with `Mapped` type hints and `mapped_column()`. Three enum types created: `IntensityLevel`, `PlanType`, `SprintStatus`. All models have bidirectional relationships with cascade delete. Indexes added for date lookups and frequently queried columns. Unique constraints on (year_config_id, date) for entries and (year_config_id, month) for month configs. Fixed the `init-db` command to import models before calling `db.create_all()`. All tests pass: models can be created, queried, and cascade delete works correctly.
 
 ---
 

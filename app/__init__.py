@@ -64,5 +64,7 @@ def register_commands(app: Flask) -> None:
     @app.cli.command('init-db')
     def init_db_command():
         """Create all database tables."""
+        # Import models so SQLAlchemy knows about them before creating tables
+        from app import models  # noqa: F401
         db.create_all()
         print('Database initialized successfully.')

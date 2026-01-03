@@ -170,3 +170,46 @@ def get_remaining_workdays_in_month(
     last_day = datetime.date(from_date.year, from_date.month, last_day_num)
 
     return get_workdays_in_range(from_date, last_day, holidays, vacation_days)
+
+
+def get_weekend_days_in_range(
+    start_date: datetime.date,
+    end_date: datetime.date
+) -> List[datetime.date]:
+    """
+    Get all weekend days (Saturday/Sunday) in a date range (inclusive).
+
+    Used for catch-up sprints where weekend billing is optional.
+    Does not require holidays/vacation parameters since weekend billing
+    is voluntary - users choose whether to bill on weekends.
+
+    Args:
+        start_date: First date in the range (inclusive)
+        end_date: Last date in the range (inclusive)
+
+    Returns:
+        List of datetime.date objects for all weekend days, sorted chronologically.
+        Returns empty list if start_date > end_date.
+
+    Examples:
+        >>> start = datetime.date(2025, 1, 6)   # Monday
+        >>> end = datetime.date(2025, 1, 12)    # Sunday
+        >>> weekends = get_weekend_days_in_range(start, end)
+        >>> len(weekends)
+        2  # Saturday Jan 11 and Sunday Jan 12
+    """
+    # Handle reversed dates gracefully
+    if start_date > end_date:
+        return []
+
+    weekend_days = []
+    current_date = start_date
+    one_day = datetime.timedelta(days=1)
+
+    while current_date <= end_date:
+        # Saturday = 5, Sunday = 6 in Python's weekday()
+        if current_date.weekday() >= 5:
+            weekend_days.append(current_date)
+        current_date += one_day
+
+    return weekend_days

@@ -462,22 +462,22 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Build the interface for creating a catch-up sprint.
 
 **Tasks:**
-- [ ] Create `templates/catchup/create.html`:
+- [x] Create `templates/catchup/create.html`:
   - Target plan selector (Optimistic or Realistic)
   - Duration selector (1-6 weeks)
   - Show calculated daily target based on selection
   - Option to include weekend days (2-4 hours)
   - Adjustable parameters before accepting
   - Preview of the sprint plan
-- [ ] Implement sprint calculation in `services/catchup.py`:
+- [x] Implement sprint calculation in `services/catchup.py`:
   - Calculate hours needed to catch up
   - Distribute across sprint duration
   - Respect 9.5 hour max
   - Include optional weekend hours
-- [ ] Implement routes:
+- [x] Implement routes:
   - GET `/catchup/new` - show creation form
   - POST `/catchup` - create sprint
-- [ ] Save CatchUpSprint to database
+- [x] Save CatchUpSprint to database
 
 **Acceptance Criteria:**
 - User can create catch-up sprint with clear preview
@@ -486,7 +486,33 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Weekend billing is optional and capped at 4 hours
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-03.** Implemented the full catch-up sprint creation feature:
+>
+> **Service (`app/services/catchup.py`):**
+> - `SprintPreview` dataclass with all sprint parameters (hours_behind, weekday_target, weekend_target, feasibility, messaging)
+> - `calculate_sprint_preview()` - calculates what a sprint would require with live preview
+> - `create_catch_up_sprint()` - creates and saves sprint to database, marks existing as revised
+> - `get_active_sprint()` and `get_plan_statuses()` helper functions
+> - `get_sprint_message()` - generates encouraging messages based on target difficulty
+>
+> **Routes (`app/routes/catchup.py`):**
+> - `GET /catchup/new` - displays creation form with current plan statuses
+> - `POST /catchup/preview` - HTMX endpoint for live sprint preview calculation
+> - `POST /catchup/` - creates sprint and redirects to dashboard with success message
+>
+> **Templates:**
+> - `app/templates/catchup/create.html` - main form with plan selector, duration, weekend billing toggle
+> - `app/templates/catchup/partials/sprint_preview.html` - HTMX partial showing calculated targets with color-coded feasibility
+>
+> **Integration:**
+> - Added "Catch-Up" link to navigation in `base.html`
+> - Added catch-up suggestion banner on dashboard when user is behind (but no active sprint)
+> - Blueprint registered in `app/__init__.py` at `/catchup`
+>
+> **Testing:**
+> - Added `get_weekend_days_in_range()` to `calendar_utils.py` with 12 unit tests
+> - Created `tests/test_catchup.py` with 22 unit tests covering service functions
+> - All 135 tests pass
 
 ---
 

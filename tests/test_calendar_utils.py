@@ -12,6 +12,7 @@ from app.services.calendar_utils import (
     get_workdays_in_month,
     get_workdays_in_range,
     get_remaining_workdays_in_month,
+    get_weekend_days_in_range,
 )
 
 
@@ -378,3 +379,111 @@ class TestEdgeCases:
         # Should not raise any errors
         workdays = get_workdays_in_month(2025, 1, holidays, set())
         assert isinstance(workdays, list)
+
+
+class TestGetWeekendDaysInRange:
+    """Tests for the get_weekend_days_in_range function."""
+
+    def test_full_week_has_two_weekend_days(self):
+        """A full Mon-Sun week should have 2 weekend days."""
+        start = datetime.date(2025, 1, 6)   # Monday
+        end = datetime.date(2025, 1, 12)    # Sunday
+
+        weekends = get_weekend_days_in_range(start, end)
+
+        assert len(weekends) == 2
+        assert datetime.date(2025, 1, 11) in weekends  # Saturday
+        assert datetime.date(2025, 1, 12) in weekends  # Sunday
+
+    def test_weekdays_only_range(self):
+        """Mon-Fri range should have no weekend days."""
+        start = datetime.date(2025, 1, 6)   # Monday
+        end = datetime.date(2025, 1, 10)    # Friday
+
+        weekends = get_weekend_days_in_range(start, end)
+
+        assert weekends == []
+
+    def test_weekend_only_range(self):
+        """Sat-Sun range should have 2 weekend days."""
+        start = datetime.date(2025, 1, 4)   # Saturday
+        end = datetime.date(2025, 1, 5)     # Sunday
+
+        weekends = get_weekend_days_in_range(start, end)
+
+        assert len(weekends) == 2
+        assert weekends[0] == datetime.date(2025, 1, 4)
+        assert weekends[1] == datetime.date(2025, 1, 5)
+
+    def test_two_weeks_has_four_weekend_days(self):
+        """Two full weeks should have 4 weekend days."""
+        start = datetime.date(2025, 1, 6)   # Monday
+        end = datetime.date(2025, 1, 19)    # Sunday (two weeks later)
+
+        weekends = get_weekend_days_in_range(start, end)
+
+        assert len(weekends) == 4
+
+    def test_reversed_dates_returns_empty(self):
+        """If start > end, return empty list."""
+        start = datetime.date(2025, 1, 12)
+        end = datetime.date(2025, 1, 6)
+
+        weekends = get_weekend_days_in_range(start, end)
+
+        assert weekends == []
+
+    def test_single_saturday(self):
+        """Single Saturday should return list with one date."""
+        saturday = datetime.date(2025, 1, 4)
+
+        weekends = get_weekend_days_in_range(saturday, saturday)
+
+        assert weekends == [saturday]
+
+    def test_single_sunday(self):
+        """Single Sunday should return list with one date."""
+        sunday = datetime.date(2025, 1, 5)
+
+        weekends = get_weekend_days_in_range(sunday, sunday)
+
+        assert weekends == [sunday]
+
+    def test_single_weekday(self):
+        """Single weekday should return empty list."""
+        monday = datetime.date(2025, 1, 6)
+
+        weekends = get_weekend_days_in_range(monday, monday)
+
+        assert weekends == []
+
+    def test_six_weeks_for_catch_up_sprint(self):
+        """Six weeks (max sprint duration) should have 12 weekend days."""
+        start = datetime.date(2025, 1, 6)   # Monday
+        end = datetime.date(2025, 2, 16)    # Sunday (6 weeks later)
+
+        weekends = get_weekend_days_in_range(start, end)
+
+        assert len(weekends) == 12
+
+    def test_weekends_are_sorted(self):
+        """Weekend days should be returned in chronological order."""
+        start = datetime.date(2025, 1, 1)
+        end = datetime.date(2025, 1, 31)
+
+        weekends = get_weekend_days_in_range(start, end)
+
+        assert weekends == sorted(weekends)
+
+    def test_cross_month_boundary(self):
+        """Range crossing month boundary should work correctly."""
+        start = datetime.date(2025, 1, 27)  # Monday
+        end = datetime.date(2025, 2, 9)     # Sunday
+
+        weekends = get_weekend_days_in_range(start, end)
+
+        # Jan 27-31: no weekends (Mon-Fri)
+        # Feb 1-2: Sat, Sun
+        # Feb 3-7: no weekends (Mon-Fri)
+        # Feb 8-9: Sat, Sun
+        assert len(weekends) == 4

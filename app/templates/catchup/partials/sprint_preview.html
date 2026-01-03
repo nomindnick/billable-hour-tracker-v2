@@ -1,0 +1,130 @@
+{# Sprint Preview Partial - HTMX target for live updates #}
+
+{% if show_placeholder is defined and show_placeholder %}
+{# Initial placeholder state #}
+<div class="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center" data-feasible="false">
+    <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+    </svg>
+    <p class="text-gray-500">Select a plan to see your sprint preview</p>
+</div>
+
+{% elif error is defined and error %}
+{# Error state #}
+<div class="bg-red-50 border border-red-200 rounded-lg p-4" data-feasible="false">
+    <div class="flex">
+        <svg class="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+        </svg>
+        <div class="ml-3">
+            <p class="text-sm text-red-700">{{ error }}</p>
+        </div>
+    </div>
+</div>
+
+{% elif preview is not none %}
+{# Preview with calculated data #}
+<div class="border rounded-lg overflow-hidden {% if preview.is_feasible %}{% if preview.message_type == 'success' %}border-green-200{% else %}border-amber-200{% endif %}{% else %}border-red-200{% endif %}" data-feasible="{{ 'true' if preview.is_feasible else 'false' }}">
+    {# Header with status #}
+    <div class="px-4 py-3 {% if preview.is_feasible %}{% if preview.message_type == 'success' %}bg-green-50{% else %}bg-amber-50{% endif %}{% else %}bg-red-50{% endif %}">
+        <div class="flex items-center">
+            {% if preview.is_feasible %}
+            <svg class="w-5 h-5 {% if preview.message_type == 'success' %}text-green-500{% else %}text-amber-500{% endif %} flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                {% if preview.message_type == 'success' %}
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                {% else %}
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                {% endif %}
+            </svg>
+            {% else %}
+            <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+            </svg>
+            {% endif %}
+            <p class="ml-2 text-sm font-medium {% if preview.is_feasible %}{% if preview.message_type == 'success' %}text-green-800{% else %}text-amber-800{% endif %}{% else %}text-red-800{% endif %}">
+                {{ preview.message }}
+            </p>
+        </div>
+    </div>
+
+    {# Sprint details #}
+    <div class="p-4 bg-white">
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            {# Total hours to recover #}
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <div class="text-2xl font-bold text-gray-900">{{ "%.1f"|format(preview.target_hours) }}</div>
+                <div class="text-sm text-gray-500">hours to recover</div>
+            </div>
+
+            {# Sprint end date #}
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <div class="text-2xl font-bold text-gray-900">{{ preview.end_date.strftime('%b %d') }}</div>
+                <div class="text-sm text-gray-500">sprint ends</div>
+            </div>
+        </div>
+
+        {# Daily targets breakdown #}
+        <div class="space-y-3">
+            <h4 class="text-sm font-medium text-gray-700">Daily Targets</h4>
+
+            {# Weekday target #}
+            <div class="flex items-center justify-between p-3 rounded-lg {% if preview.weekday_target <= 7.5 %}bg-green-50{% elif preview.weekday_target <= 9.0 %}bg-amber-50{% else %}bg-red-50{% endif %}">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="text-sm text-gray-700">Weekdays ({{ preview.total_workdays }} days)</span>
+                </div>
+                <span class="text-lg font-bold {% if preview.weekday_target <= 7.5 %}text-green-700{% elif preview.weekday_target <= 9.0 %}text-amber-700{% else %}text-red-700{% endif %}">
+                    {{ "%.1f"|format(preview.weekday_target) }} hours/day
+                </span>
+            </div>
+
+            {# Weekend target (if applicable) #}
+            {% if preview.weekend_target > 0 %}
+            <div class="flex items-center justify-between p-3 rounded-lg bg-purple-50">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <span class="text-sm text-gray-700">Weekends ({{ preview.total_weekend_days }} days)</span>
+                </div>
+                <span class="text-lg font-bold text-purple-700">
+                    {{ "%.1f"|format(preview.weekend_target) }} hours/day
+                </span>
+            </div>
+            {% endif %}
+        </div>
+
+        {# Quick math breakdown #}
+        <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="text-xs text-gray-500 space-y-1">
+                {% if preview.weekend_target > 0 %}
+                <div class="flex justify-between">
+                    <span>Weekend contribution:</span>
+                    <span>{{ preview.total_weekend_days }} days x {{ "%.1f"|format(preview.weekend_target) }}h = {{ "%.1f"|format(preview.total_weekend_days * preview.weekend_target) }}h</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Weekday contribution:</span>
+                    <span>{{ preview.total_workdays }} days x {{ "%.1f"|format(preview.weekday_target) }}h = {{ "%.1f"|format(preview.total_workdays * preview.weekday_target) }}h</span>
+                </div>
+                {% else %}
+                <div class="flex justify-between">
+                    <span>Total hours:</span>
+                    <span>{{ preview.total_workdays }} days x {{ "%.1f"|format(preview.weekday_target) }}h = {{ "%.1f"|format(preview.target_hours) }}h</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+{# Default placeholder #}
+<div class="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center" data-feasible="false">
+    <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+    </svg>
+    <p class="text-gray-500">Select a plan to see your sprint preview</p>
+</div>
+{% endif %}

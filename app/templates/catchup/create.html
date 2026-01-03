@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Start Catch-Up Sprint | Billable Hours Planner{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Start a Catch-Up Sprint</h1>
+        <p class="mt-2 text-gray-600">
+            Let's create a plan to help you get back on track. Catch-up sprints are a normal part of the process -
+            everyone has slow periods, and this tool helps you recover smoothly.
+        </p>
+    </div>
+
+    <!-- Current Status Section -->
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 mb-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Where You Stand</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for plan in plan_options %}
+            <div class="border rounded-lg p-4 {% if loop.first %}border-amber-300 bg-amber-50{% else %}border-gray-200 bg-gray-50{% endif %}">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-medium text-gray-900">{{ plan.name }}</span>
+                    {% if loop.first %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                        Most behind
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="text-2xl font-bold text-red-600">
+                    {{ "%.1f"|format(plan.hours_behind) }} hours behind
+                </div>
+                <div class="text-sm text-gray-500 mt-1">
+                    {{ plan.status_label }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Sprint Configuration Form -->
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 mb-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Configure Your Sprint</h2>
+
+        <form id="sprint-form" method="POST" action="{{ url_for('catchup.create_sprint') }}" class="space-y-6">
+            <!-- Plan Selection -->
+            <div>
+                <label for="plan_type" class="block text-sm font-medium text-gray-700 mb-2">
+                    Which plan do you want to catch up on?
+                </label>
+                <select
+                    id="plan_type"
+                    name="plan_type"
+                    hx-post="{{ url_for('catchup.preview_sprint') }}"
+                    hx-trigger="change"
+                    hx-target="#sprint-preview"
+                    hx-include="#sprint-form"
+                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    required
+                >
+                    <option value="">Select a plan...</option>
+                    {% for plan in plan_options %}
+                    <option value="{{ plan.type.value }}">
+                        {{ plan.name }} ({{ "%.1f"|format(plan.hours_behind) }} hours behind)
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Duration Selection -->
+            <div>
+                <label for="duration" class="block text-sm font-medium text-gray-700 mb-2">
+                    How long should the sprint last?
+                </label>
+                <select
+                    id="duration"
+                    name="duration"
+                    hx-post="{{ url_for('catchup.preview_sprint') }}"
+                    hx-trigger="change"
+                    hx-target="#sprint-preview"
+                    hx-include="#sprint-form"
+                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    required
+                >
+                    {% for weeks in range(1, 7) %}
+                    <option value="{{ weeks }}" {% if weeks == 2 %}selected{% endif %}>
+                        {{ weeks }} week{{ 's' if weeks > 1 else '' }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="mt-1 text-sm text-gray-500">
+                    Longer sprints have lower daily targets, making them more sustainable.
+                </p>
+            </div>
+
+            <!-- Weekend Billing -->
+            <div class="border rounded-lg p-4 bg-gray-50">
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        <input
+                            id="include_weekends"
+                            name="include_weekends"
+                            type="checkbox"
+                            hx-post="{{ url_for('catchup.preview_sprint') }}"
+                            hx-trigger="change"
+                            hx-target="#sprint-preview"
+                            hx-include="#sprint-form"
+                            class="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        >
+                    </div>
+                    <div class="ml-3">
+                        <label for="include_weekends" class="text-sm font-medium text-gray-700">
+                            Include weekend billing
+                        </label>
+                        <p class="text-sm text-gray-500">
+                            Adding a few hours on weekends can significantly reduce your weekday targets.
+                        </p>
+                    </div>
+                </div>
+
+                <div id="weekend-hours-container" class="mt-4 hidden">
+                    <label for="weekend_hours" class="block text-sm font-medium text-gray-700 mb-2">
+                        Hours per weekend day
+                    </label>
+                    <div class="flex items-center space-x-4">
+                        <input
+                            type="range"
+                            id="weekend_hours_slider"
+                            min="1"
+                            max="4"
+                            step="0.5"
+                            value="3"
+                            class="flex-1"
+                            oninput="document.getElementById('weekend_hours').value = this.value; document.getElementById('weekend_hours_display').textContent = this.value;"
+                        >
+                        <span id="weekend_hours_display" class="text-lg font-medium text-gray-900 w-8 text-center">3</span>
+                        <span class="text-gray-500">hours</span>
+                    </div>
+                    <input
+                        type="hidden"
+                        id="weekend_hours"
+                        name="weekend_hours"
+                        value="3"
+                        hx-post="{{ url_for('catchup.preview_sprint') }}"
+                        hx-trigger="change from:#weekend_hours_slider"
+                        hx-target="#sprint-preview"
+                        hx-include="#sprint-form"
+                    >
+                    <p class="mt-1 text-sm text-gray-500">
+                        Recommended: 2-4 hours. Keep it light to avoid burnout.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Sprint Preview -->
+            <div id="sprint-preview">
+                {% include "catchup/partials/sprint_preview.html" %}
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                <a href="{{ url_for('dashboard.index') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                    Cancel
+                </a>
+                <button
+                    type="submit"
+                    id="submit-button"
+                    disabled
+                    class="inline-flex items-center px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Start Sprint
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Encouragement -->
+    <div class="text-center text-sm text-gray-500">
+        <p>
+            Remember: catch-up sprints are temporary adjustments, not permanent changes.
+            Focus on the sprint, and you'll be back on track soon.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Show/hide weekend hours section based on checkbox
+    const weekendCheckbox = document.getElementById('include_weekends');
+    const weekendContainer = document.getElementById('weekend-hours-container');
+    const slider = document.getElementById('weekend_hours_slider');
+    const hiddenInput = document.getElementById('weekend_hours');
+
+    weekendCheckbox.addEventListener('change', function() {
+        weekendContainer.classList.toggle('hidden', !this.checked);
+        if (!this.checked) {
+            hiddenInput.value = '0';
+        } else {
+            hiddenInput.value = slider.value;
+        }
+    });
+
+    // Sync slider with hidden input
+    slider.addEventListener('input', function() {
+        hiddenInput.value = this.value;
+    });
+
+    // After HTMX swap, enable/disable submit button based on preview feasibility
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        if (event.detail.target.id === 'sprint-preview') {
+            const submitButton = document.getElementById('submit-button');
+            const feasible = document.querySelector('[data-feasible]');
+            const planSelected = document.getElementById('plan_type').value !== '';
+
+            if (feasible && feasible.dataset.feasible === 'true' && planSelected) {
+                submitButton.disabled = false;
+            } else {
+                submitButton.disabled = true;
+            }
+        }
+    });
+</script>
+{% endblock %}

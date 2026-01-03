@@ -254,14 +254,15 @@ class TestCalculateMonthlyTargets:
             assert dec_hours < nov_hours
 
     def test_end_month_limits_calculation(self, basic_year_config, app):
-        """end_month parameter should limit which months are included."""
+        """end_month parameter should limit which months get hours."""
         with app.app_context():
             year_config = db.session.get(YearConfig, basic_year_config.id)
             targets = calculate_monthly_targets(year_config, end_month=6)
 
-            assert len(targets) == 6
-            assert all(month in targets for month in range(1, 7))
-            assert 7 not in targets
+            # All 12 months are returned, but months 7-12 have 0 hours
+            assert len(targets) == 12
+            assert all(targets[month] > 0 for month in range(1, 7))
+            assert all(targets[month] == 0 for month in range(7, 13))
 
     def test_target_hours_overrides_annual(self, basic_year_config, app):
         """target_hours parameter should override annual_target."""
@@ -363,9 +364,10 @@ class TestCalculateMonthlyTargetsForPlan:
 
             targets = calculate_monthly_targets_for_plan(year_config, plan)
 
-            # Should only have targets for months 1-11
-            assert len(targets) == 11
-            assert 12 not in targets
+            # All 12 months returned, but December has 0 hours
+            assert len(targets) == 12
+            assert all(targets[month] > 0 for month in range(1, 12))
+            assert targets[12] == 0
             # Total should still be annual target
             assert abs(sum(targets.values()) - 1800) < 0.01
 

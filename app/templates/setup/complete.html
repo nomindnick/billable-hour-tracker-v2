@@ -36,6 +36,24 @@
                 <span class="font-medium text-gray-900">{{ summary.total_workdays }} days</span>
             </div>
 
+            <!-- Mid-Year Start Info (if applicable) -->
+            {% if year_config.start_date and year_config.start_date.month > 1 %}
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Started Tracking</span>
+                <span class="font-medium text-gray-900">{{ year_config.start_date.strftime('%B %d, %Y') }}</span>
+            </div>
+            {% if summary.historical_hours > 0 %}
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Historical Hours</span>
+                <span class="font-medium text-gray-900">{{ "{:,.1f}".format(summary.historical_hours) }} hours</span>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Remaining Target</span>
+                <span class="font-medium text-green-600">{{ "{:,.1f}".format(year_config.annual_target - summary.historical_hours) }} hours</span>
+            </div>
+            {% endif %}
+            {% endif %}
+
             <!-- Days Off -->
             <div class="flex items-center justify-between py-2 border-b border-gray-100">
                 <span class="text-gray-600">Holidays</span>

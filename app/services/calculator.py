@@ -88,6 +88,37 @@ class PlanStatus:
 # Helper Functions
 # -----------------------------------------------------------------------------
 
+def get_historical_hours(year_config: YearConfig) -> float:
+    """
+    Get total historical hours billed before the user started tracking.
+
+    Combines both the lump sum (hours_pre_start) and any monthly breakdown
+    entries (historical_months). Users can use either or both methods.
+
+    Args:
+        year_config: The year configuration with historical data
+
+    Returns:
+        Total historical hours (0.0 if no historical data)
+
+    Examples:
+        >>> # User entered 500 hours lump sum + 100 hours in historical January
+        >>> get_historical_hours(year_config)
+        600.0
+    """
+    total = 0.0
+
+    # Add lump sum if provided
+    if year_config.hours_pre_start:
+        total += year_config.hours_pre_start
+
+    # Add historical month entries
+    for hist_month in year_config.historical_months:
+        total += hist_month.hours_billed
+
+    return total
+
+
 def get_hours_billed_in_month(
     year_config: YearConfig,
     year: int,
@@ -122,22 +153,36 @@ def get_hours_billed_to_date(
     """
     Sum all hours billed up to and including a specific date.
 
+    Includes historical hours (from before start_date) in the total.
+    Historical hours are only included if the as_of_date is on or after
+    the start_date (or if no start_date is set, meaning Jan 1 start).
+
     Args:
         year_config: The year configuration containing daily entries
         as_of_date: Include entries up to and including this date
 
     Returns:
-        Total hours billed through the specified date
+        Total hours billed through the specified date (including historical)
 
     Examples:
+        >>> # 450 from daily entries + 500 historical = 950
         >>> get_hours_billed_to_date(year_config, datetime.date(2025, 3, 15))
-        450.0
+        950.0
     """
-    return sum(
+    # Sum daily entries
+    daily_hours = sum(
         entry.hours_billed
         for entry in year_config.daily_entries
         if entry.date <= as_of_date
     )
+
+    # Add historical hours if we're past the start date
+    # (Historical hours represent hours billed before start_date)
+    start_date = year_config.start_date or datetime.date(year_config.year, 1, 1)
+    if as_of_date >= start_date:
+        return daily_hours + get_historical_hours(year_config)
+
+    return daily_hours
 
 
 def get_expected_hours_to_date(
@@ -148,8 +193,13 @@ def get_expected_hours_to_date(
     """
     Calculate expected hours based on plan through a specific date.
 
-    For completed months, adds the full monthly target.
+    For completed months (after start_date), adds the full monthly target.
     For the current month, prorates based on workdays elapsed.
+    Months before start_date have 0 expected hours.
+
+    For mid-year starts, this returns expected hours only from start_date
+    forward. Historical hours are added in get_hours_billed_to_date(),
+    so the comparison (actual - expected) gives correct plan status.
 
     Args:
         year_config: The year configuration
@@ -167,31 +217,90 @@ def get_expected_hours_to_date(
     monthly_targets = calculate_monthly_targets_for_plan(year_config, plan_config)
     holidays, vacation_days = extract_holidays_and_vacations(year_config)
 
+    # Determine the start date (default to Jan 1 if not set)
+    start_date = year_config.start_date or datetime.date(year_config.year, 1, 1)
+
+    # If as_of_date is before start_date, no expected hours yet
+    if as_of_date < start_date:
+        return 0.0
+
     expected = 0.0
 
-    # Add full targets for completed months
-    for month in range(1, as_of_date.month):
+    # Determine which months to include (start from start_date's month)
+    start_month = start_date.month
+
+    # Add full targets for completed months (after start_month, before current month)
+    for month in range(start_month, as_of_date.month):
         expected += monthly_targets.get(month, 0.0)
+
+    # Special handling for start month if it's a past month
+    # (start month is fully expected only after the start_date portion)
+    if start_month < as_of_date.month:
+        # Start month is already included in the loop above
+        # But we need to adjust for partial month if start_date wasn't the 1st
+        if start_date.day > 1:
+            # Subtract the portion of start month before start_date
+            total_workdays_start = get_workdays_in_month(
+                start_date.year,
+                start_month,
+                holidays,
+                vacation_days
+            )
+            workdays_before_start = get_workdays_in_range(
+                datetime.date(start_date.year, start_month, 1),
+                start_date - datetime.timedelta(days=1),
+                holidays,
+                vacation_days
+            )
+            if len(total_workdays_start) > 0:
+                pre_start_proportion = len(workdays_before_start) / len(total_workdays_start)
+                month_target = monthly_targets.get(start_month, 0.0)
+                expected -= month_target * pre_start_proportion
 
     # Prorate current month based on workdays elapsed
     month_start = datetime.date(as_of_date.year, as_of_date.month, 1)
+
+    # If this is the start month, start counting from start_date, not month start
+    if as_of_date.month == start_month:
+        effective_start = start_date
+    else:
+        effective_start = month_start
+
     total_workdays = get_workdays_in_month(
         as_of_date.year,
         as_of_date.month,
         holidays,
         vacation_days
     )
+
+    # Count workdays from effective start to as_of_date
     elapsed_workdays = get_workdays_in_range(
-        month_start,
+        effective_start,
         as_of_date,
         holidays,
         vacation_days
     )
 
-    if len(total_workdays) > 0:
-        month_target = monthly_targets.get(as_of_date.month, 0.0)
-        proportion = len(elapsed_workdays) / len(total_workdays)
-        expected += month_target * proportion
+    # For current month, calculate based on workdays from effective start
+    if as_of_date.month == start_month:
+        # Only count workdays from start_date to end of month
+        workdays_from_start = get_workdays_in_range(
+            start_date,
+            datetime.date(start_date.year, start_month, 1) + datetime.timedelta(days=31),
+            holidays,
+            vacation_days
+        )
+        # Filter to only include days in this month
+        workdays_from_start = [d for d in workdays_from_start if d.month == start_month]
+        if len(workdays_from_start) > 0:
+            month_target = monthly_targets.get(as_of_date.month, 0.0)
+            proportion = len(elapsed_workdays) / len(workdays_from_start)
+            expected += month_target * proportion
+    else:
+        if len(total_workdays) > 0:
+            month_target = monthly_targets.get(as_of_date.month, 0.0)
+            proportion = len(elapsed_workdays) / len(total_workdays)
+            expected += month_target * proportion
 
     return expected
 

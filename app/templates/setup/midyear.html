@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Mid-Year Start | Billable Hours Planner{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Starting Mid-Year?</h1>
+        <p class="mt-2 text-gray-600">
+            If you've already billed hours this year before starting to use this app, enter them here so your plans calculate correctly.
+        </p>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="mb-8">
+        <div class="flex items-center">
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-green-500 text-white rounded-full text-sm font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </span>
+                <span class="ml-2 text-sm font-medium text-green-600">Year</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-primary-600"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-primary-600 text-white rounded-full text-sm font-medium">
+                    2
+                </span>
+                <span class="ml-2 text-sm font-medium text-primary-600">Historical</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-gray-200"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+                    3
+                </span>
+                <span class="ml-2 text-sm font-medium text-gray-500">Holidays</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-gray-200"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+                    4
+                </span>
+                <span class="ml-2 text-sm font-medium text-gray-500">Vacation</span>
+            </div>
+            <div class="flex-1 h-0.5 mx-4 bg-gray-200"></div>
+            <div class="flex items-center">
+                <span class="flex items-center justify-center w-8 h-8 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+                    5
+                </span>
+                <span class="ml-2 text-sm font-medium text-gray-500">Plans</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Form Card -->
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 mb-6">
+        <form method="POST" action="{{ url_for('setup.save_midyear') }}" class="space-y-6">
+            <!-- Start Date -->
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-gray-700 mb-1">
+                    When did you start tracking this year?
+                </label>
+                <input
+                    type="date"
+                    id="start_date"
+                    name="start_date"
+                    value="{{ year_config.start_date.isoformat() if year_config.start_date else today }}"
+                    min="{{ year_config.year }}-01-01"
+                    max="{{ today }}"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    hx-get="{{ url_for('setup.midyear_months') }}"
+                    hx-trigger="change"
+                    hx-target="#months-grid"
+                    hx-swap="outerHTML"
+                    hx-include="#hours_pre_start"
+                >
+                <p class="mt-1 text-sm text-gray-500">
+                    Hours billed before this date will be counted as "historical."
+                </p>
+            </div>
+
+            <!-- Entry Mode Toggle -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    How do you want to enter historical hours?
+                </label>
+                <div class="flex space-x-4">
+                    <label class="flex items-center">
+                        <input
+                            type="radio"
+                            name="entry_mode"
+                            value="lump"
+                            {% if not has_monthly_data %}checked{% endif %}
+                            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                            hx-get="{{ url_for('setup.midyear_form') }}"
+                            hx-trigger="change"
+                            hx-target="#entry-section"
+                            hx-include="[name='start_date']"
+                        >
+                        <span class="ml-2 text-sm text-gray-700">Quick (single total)</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input
+                            type="radio"
+                            name="entry_mode"
+                            value="monthly"
+                            {% if has_monthly_data %}checked{% endif %}
+                            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                            hx-get="{{ url_for('setup.midyear_form') }}"
+                            hx-trigger="change"
+                            hx-target="#entry-section"
+                            hx-include="[name='start_date']"
+                        >
+                        <span class="ml-2 text-sm text-gray-700">Detailed (by month)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Entry Section (changes based on mode) -->
+            <div id="entry-section">
+                {% if not has_monthly_data %}
+                <!-- Lump Sum Entry -->
+                <div>
+                    <label for="hours_pre_start" class="block text-sm font-medium text-gray-700 mb-1">
+                        Total hours billed before start date
+                    </label>
+                    <div class="relative">
+                        <input
+                            type="number"
+                            id="hours_pre_start"
+                            name="hours_pre_start"
+                            value="{{ year_config.hours_pre_start or 0 }}"
+                            min="0"
+                            max="{{ year_config.annual_target }}"
+                            step="0.5"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        >
+                        <span class="absolute right-3 top-2 text-gray-500">hours</span>
+                    </div>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Enter the total hours you've billed so far in {{ year_config.year }}.
+                    </p>
+                </div>
+                {% else %}
+                <!-- Monthly Entry Grid -->
+                <div id="months-grid">
+                    {% include 'setup/partials/midyear_months.html' %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Info Box -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex">
+                    <svg class="w-5 h-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700">
+                            <strong>How this works:</strong> Your remaining hours ({{ year_config.annual_target }} target - historical hours)
+                            will be distributed across the months from your start date through December.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between pt-4 border-t border-gray-200">
+                <a
+                    href="{{ url_for('setup.index') }}"
+                    class="px-4 py-2 text-gray-700 font-medium hover:text-gray-900"
+                >
+                    Back
+                </a>
+                <div class="flex space-x-3">
+                    <a
+                        href="{{ url_for('setup.holidays') }}"
+                        class="px-4 py-2 text-gray-600 font-medium hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                        Skip (Starting Jan 1)
+                    </a>
+                    <button
+                        type="submit"
+                        class="px-6 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                    >
+                        Save & Continue
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

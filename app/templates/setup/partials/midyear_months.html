@@ -1,0 +1,32 @@
+<div id="months-grid">
+    <label class="block text-sm font-medium text-gray-700 mb-2">
+        Hours billed by month (before start date)
+    </label>
+    <div class="grid grid-cols-3 gap-3">
+        {% for month_num, month_name in months %}
+        {% set is_before_start = month_num < start_month %}
+        <div class="{% if is_before_start %}bg-gray-50{% else %}bg-gray-100 opacity-50{% endif %} border border-gray-200 rounded-lg p-3">
+            <label for="month_{{ month_num }}" class="block text-xs font-medium text-gray-600 mb-1">
+                {{ month_name }}
+            </label>
+            <input
+                type="number"
+                id="month_{{ month_num }}"
+                name="month_{{ month_num }}"
+                value="{{ historical_by_month.get(month_num, 0) }}"
+                min="0"
+                max="300"
+                step="0.5"
+                {% if not is_before_start %}disabled{% endif %}
+                class="block w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 {% if not is_before_start %}bg-gray-200 cursor-not-allowed{% endif %}"
+            >
+        </div>
+        {% endfor %}
+    </div>
+    <p class="mt-2 text-sm text-gray-500">
+        Only months before your start date can have historical hours.
+        {% if total_historical > 0 %}
+        <span class="font-medium text-gray-700">Total: {{ total_historical }} hours</span>
+        {% endif %}
+    </p>
+</div>

@@ -14,6 +14,7 @@ from flask import Blueprint, flash, make_response, redirect, render_template, re
 
 from app import db
 from app.models import (
+    HistoricalMonth,
     Holiday,
     IntensityLevel,
     MonthConfig,
@@ -130,8 +131,196 @@ def save_year():
 
     db.session.commit()
 
-    # Redirect to the holidays setup step
+    # Redirect to the mid-year start step
+    return redirect(url_for('setup.midyear'))
+
+
+# -----------------------------------------------------------------------------
+# Mid-Year Start Routes
+# -----------------------------------------------------------------------------
+
+MONTH_NAMES = [
+    (1, "January"), (2, "February"), (3, "March"), (4, "April"),
+    (5, "May"), (6, "June"), (7, "July"), (8, "August"),
+    (9, "September"), (10, "October"), (11, "November"), (12, "December")
+]
+
+
+@setup_bp.route('/midyear')
+def midyear():
+    """
+    Display the mid-year start configuration form.
+
+    This is step 2 of the setup wizard. Users who started billing before
+    using this app can enter their historical hours here.
+    """
+    # Get the most recently configured year
+    year_config = YearConfig.query.order_by(YearConfig.updated_at.desc()).first()
+
+    if not year_config:
+        flash('Please set up your year first.', 'error')
+        return redirect(url_for('setup.index'))
+
+    # Get today's date for the default start date
+    today = datetime.date.today()
+
+    # Check if we have any historical month data
+    has_monthly_data = len(year_config.historical_months) > 0
+
+    # Build dict of historical hours by month
+    historical_by_month = {
+        hm.month: hm.hours_billed
+        for hm in year_config.historical_months
+    }
+
+    # Determine start month
+    if year_config.start_date:
+        start_month = year_config.start_date.month
+    else:
+        start_month = today.month
+
+    # Calculate total historical hours
+    total_historical = sum(historical_by_month.values()) + (year_config.hours_pre_start or 0)
+
+    return render_template(
+        'setup/midyear.html',
+        year_config=year_config,
+        today=today.isoformat(),
+        has_monthly_data=has_monthly_data,
+        months=MONTH_NAMES,
+        historical_by_month=historical_by_month,
+        start_month=start_month,
+        total_historical=total_historical
+    )
+
+
+@setup_bp.route('/midyear', methods=['POST'])
+def save_midyear():
+    """
+    Save mid-year start configuration and proceed to holidays.
+    """
+    year_config = YearConfig.query.order_by(YearConfig.updated_at.desc()).first()
+
+    if not year_config:
+        flash('Please set up your year first.', 'error')
+        return redirect(url_for('setup.index'))
+
+    # Get the start date from the form
+    start_date_str = request.form.get('start_date')
+    if start_date_str:
+        year_config.start_date = datetime.datetime.strptime(
+            start_date_str, '%Y-%m-%d'
+        ).date()
+    else:
+        year_config.start_date = datetime.date(year_config.year, 1, 1)
+
+    # Get the entry mode
+    entry_mode = request.form.get('entry_mode', 'lump')
+
+    if entry_mode == 'lump':
+        # Get lump sum hours
+        hours_pre_start = request.form.get('hours_pre_start', type=float) or 0.0
+        year_config.hours_pre_start = hours_pre_start
+
+        # Clear any existing monthly data
+        HistoricalMonth.query.filter_by(year_config_id=year_config.id).delete()
+
+    else:
+        # Monthly entry mode
+        year_config.hours_pre_start = 0.0  # Clear lump sum
+
+        # Clear existing and add new monthly data
+        HistoricalMonth.query.filter_by(year_config_id=year_config.id).delete()
+
+        start_month = year_config.start_date.month
+        for month_num in range(1, start_month):
+            hours = request.form.get(f'month_{month_num}', type=float) or 0.0
+            if hours > 0:
+                hist_month = HistoricalMonth(
+                    year_config_id=year_config.id,
+                    month=month_num,
+                    hours_billed=hours
+                )
+                db.session.add(hist_month)
+
+    db.session.commit()
+    flash('Historical hours saved.', 'success')
     return redirect(url_for('setup.holidays'))
+
+
+@setup_bp.route('/midyear/form')
+def midyear_form():
+    """
+    HTMX endpoint to switch between lump sum and monthly entry modes.
+    """
+    year_config = YearConfig.query.order_by(YearConfig.updated_at.desc()).first()
+    entry_mode = request.args.get('entry_mode', 'lump')
+
+    if entry_mode == 'lump':
+        # Return lump sum form
+        return f'''
+        <div>
+            <label for="hours_pre_start" class="block text-sm font-medium text-gray-700 mb-1">
+                Total hours billed before start date
+            </label>
+            <div class="relative">
+                <input
+                    type="number"
+                    id="hours_pre_start"
+                    name="hours_pre_start"
+                    value="{year_config.hours_pre_start or 0}"
+                    min="0"
+                    max="{year_config.annual_target}"
+                    step="0.5"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                <span class="absolute right-3 top-2 text-gray-500">hours</span>
+            </div>
+            <p class="mt-1 text-sm text-gray-500">
+                Enter the total hours you've billed so far in {year_config.year}.
+            </p>
+        </div>
+        '''
+    else:
+        # Return monthly entry grid
+        return redirect(url_for('setup.midyear_months'))
+
+
+@setup_bp.route('/midyear/months')
+def midyear_months():
+    """
+    HTMX endpoint to render the monthly entry grid.
+    """
+    year_config = YearConfig.query.order_by(YearConfig.updated_at.desc()).first()
+
+    # Get start date from query param or year config
+    start_date_str = request.args.get('start_date')
+    if start_date_str:
+        try:
+            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            start_month = start_date.month
+        except ValueError:
+            start_month = datetime.date.today().month
+    elif year_config.start_date:
+        start_month = year_config.start_date.month
+    else:
+        start_month = datetime.date.today().month
+
+    # Build dict of historical hours by month
+    historical_by_month = {
+        hm.month: hm.hours_billed
+        for hm in year_config.historical_months
+    }
+
+    total_historical = sum(historical_by_month.values())
+
+    return render_template(
+        'setup/partials/midyear_months.html',
+        months=MONTH_NAMES,
+        historical_by_month=historical_by_month,
+        start_month=start_month,
+        total_historical=total_historical
+    )
 
 
 @setup_bp.route('/holidays')
@@ -587,12 +776,18 @@ def calculate_setup_summary(year_config: YearConfig) -> dict:
             'target_date': plan_config.target_date,
         })
 
+    # Calculate historical hours
+    historical_hours = year_config.hours_pre_start or 0.0
+    for hist_month in year_config.historical_months:
+        historical_hours += hist_month.hours_billed
+
     return {
         'holidays_count': holidays_count,
         'vacation_count': vacation_count,
         'intensity_counts': intensity_counts,
         'plan_summaries': plan_summaries,
         'total_workdays': total_workdays,
+        'historical_hours': historical_hours,
     }
 
 

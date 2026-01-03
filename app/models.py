@@ -83,6 +83,8 @@ class YearConfig(db.Model):
         id: Primary key
         year: The calendar year (e.g., 2025)
         annual_target: Total billable hours target for the year (default: 1800)
+        start_date: Date user started tracking (for mid-year starts), defaults to Jan 1
+        hours_pre_start: Lump sum of hours billed before start_date (optional)
         created_at: When this configuration was created
         updated_at: When this configuration was last modified
     """
@@ -91,6 +93,8 @@ class YearConfig(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     year: Mapped[int] = mapped_column(nullable=False)
     annual_target: Mapped[int] = mapped_column(default=1800)
+    start_date: Mapped[Optional[datetime.date]] = mapped_column(nullable=True)
+    hours_pre_start: Mapped[Optional[float]] = mapped_column(nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.utcnow)
     updated_at: Mapped[datetime.datetime] = mapped_column(
         default=datetime.datetime.utcnow,
@@ -119,6 +123,10 @@ class YearConfig(db.Model):
         cascade="all, delete-orphan"
     )
     catch_up_sprints: Mapped[list["CatchUpSprint"]] = relationship(
+        back_populates="year_config",
+        cascade="all, delete-orphan"
+    )
+    historical_months: Mapped[list["HistoricalMonth"]] = relationship(
         back_populates="year_config",
         cascade="all, delete-orphan"
     )
@@ -195,6 +203,49 @@ class VacationDay(db.Model):
     def __repr__(self) -> str:
         note_str = f" ({self.note})" if self.note else ""
         return f"<VacationDay {self.date}{note_str}>"
+
+
+class HistoricalMonth(db.Model):
+    """
+    Historical hours billed for a month before the user started tracking.
+
+    For mid-year starts, users can optionally break down their historical
+    hours by month (instead of just entering a lump sum). This provides
+    better visibility in reports and charts.
+
+    Attributes:
+        id: Primary key
+        year_config_id: Foreign key to the year configuration
+        month: Month number (1-12)
+        hours_billed: Total hours billed in this historical month
+        notes: Optional note (e.g., "Estimated from firm reports")
+    """
+    __tablename__ = "historical_month"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    year_config_id: Mapped[int] = mapped_column(
+        ForeignKey("year_config.id"),
+        nullable=False
+    )
+    month: Mapped[int] = mapped_column(nullable=False)
+    hours_billed: Mapped[float] = mapped_column(nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(db.String(200), nullable=True)
+
+    # Relationship back to parent
+    year_config: Mapped["YearConfig"] = relationship(back_populates="historical_months")
+
+    # Each month can only have one historical entry per year
+    __table_args__ = (
+        UniqueConstraint(
+            "year_config_id",
+            "month",
+            name="uq_historical_month_year_month"
+        ),
+        Index("ix_historical_month_year", "year_config_id"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<HistoricalMonth month={self.month}: {self.hours_billed} hours>"
 
 
 class MonthConfig(db.Model):

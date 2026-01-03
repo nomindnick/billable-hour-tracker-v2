@@ -157,32 +157,42 @@ def extract_holidays_and_vacations(
 def calculate_monthly_targets(
     year_config: YearConfig,
     end_month: Optional[int] = None,
-    target_hours: Optional[float] = None
+    target_hours: Optional[float] = None,
+    start_month: Optional[int] = None
 ) -> dict[int, float]:
     """
-    Distribute annual target hours across months proportionally.
+    Distribute target hours across months proportionally.
 
     The algorithm weights each month by:
     - Number of workdays (excluding weekends, holidays, vacation)
     - Intensity setting (normal=1.0, light=0.75, very_light=0.5)
 
     Months with more weighted workdays receive proportionally more hours.
+    Months before start_month get 0 hours (for mid-year starts).
 
     Args:
         year_config: The year configuration with holidays, vacations, and intensities
         end_month: Last month to include (1-12). If None, includes all 12 months.
         target_hours: Total hours to distribute. If None, uses year_config.annual_target.
+        start_month: First month to include (1-12). If None, starts from month 1.
+                     Months before start_month will have 0 hours assigned.
 
     Returns:
-        Dictionary mapping month number (1-12) to target hours for that month
+        Dictionary mapping month number (1-12) to target hours for that month.
+        Months before start_month will have 0.0 hours.
 
     Examples:
         >>> targets = calculate_monthly_targets(year_config)
         >>> sum(targets.values())  # Should equal annual_target
         1800.0
+        >>> targets = calculate_monthly_targets(year_config, start_month=7, target_hours=1200)
+        >>> targets[1]  # January - before start
+        0.0
+        >>> sum(targets.values())  # Should equal 1200
+        1200.0
     """
     # Determine the range of months to calculate
-    start_month = 1
+    first_month = start_month if start_month is not None else 1
     last_month = end_month if end_month is not None else 12
 
     # Use provided target or the year's annual target
@@ -191,11 +201,14 @@ def calculate_monthly_targets(
     # Extract holidays and vacation days for efficient lookup
     holidays, vacation_days = extract_holidays_and_vacations(year_config)
 
-    # Calculate weighted workdays for each month
+    # Initialize all months to 0 (important for mid-year starts)
+    monthly_targets: dict[int, float] = {month: 0.0 for month in range(1, 13)}
+
+    # Calculate weighted workdays for each month in our range
     monthly_weighted_workdays: dict[int, float] = {}
     monthly_raw_workdays: dict[int, int] = {}
 
-    for month in range(start_month, last_month + 1):
+    for month in range(first_month, last_month + 1):
         # Get actual workdays for this month
         workdays = get_workdays_in_month(
             year_config.year,
@@ -216,17 +229,17 @@ def calculate_monthly_targets(
     # Calculate total weighted workdays
     total_weighted = sum(monthly_weighted_workdays.values())
 
-    # Distribute target proportionally
-    monthly_targets: dict[int, float] = {}
-
+    # Distribute target proportionally across active months
     if total_weighted == 0:
         # Edge case: no workdays at all (unlikely but handle gracefully)
-        # Distribute evenly across months
-        hours_per_month = total_target / (last_month - start_month + 1)
-        for month in range(start_month, last_month + 1):
-            monthly_targets[month] = hours_per_month
+        # Distribute evenly across months in range
+        month_count = last_month - first_month + 1
+        if month_count > 0:
+            hours_per_month = total_target / month_count
+            for month in range(first_month, last_month + 1):
+                monthly_targets[month] = hours_per_month
     else:
-        for month in range(start_month, last_month + 1):
+        for month in range(first_month, last_month + 1):
             proportion = monthly_weighted_workdays[month] / total_weighted
             monthly_targets[month] = total_target * proportion
 
@@ -242,8 +255,13 @@ def calculate_monthly_targets_for_plan(
 
     Different plan types have different distribution strategies:
     - Firm: Fixed 150 hours/month regardless of workdays/intensity
-    - Realistic: Weighted distribution across the full year
+    - Realistic: Weighted distribution across the full year (or remaining year for mid-year starts)
     - Optimistic: Compressed timeline, may end early with maintenance hours after
+
+    For mid-year starts:
+    - Months before start_date get 0 hours
+    - remaining_target = annual_target - historical_hours
+    - remaining_target is distributed across months from start_date to target_date
 
     Args:
         year_config: The year configuration
@@ -257,9 +275,28 @@ def calculate_monthly_targets_for_plan(
         >>> targets[6]  # June
         150.0
     """
+    # Determine start month for mid-year starts
+    start_date = year_config.start_date
+    if start_date and start_date.year == year_config.year:
+        start_month = start_date.month
+    else:
+        start_month = 1
+
+    # Calculate historical hours (lump sum + monthly breakdown)
+    historical_hours = year_config.hours_pre_start or 0.0
+    for hist_month in year_config.historical_months:
+        historical_hours += hist_month.hours_billed
+
+    # Calculate remaining hours to bill
+    remaining_target = year_config.annual_target - historical_hours
+
     if plan_config.plan_type == PlanType.FIRM:
-        # Firm plan: fixed 150 hours per month, all 12 months
-        return {month: 150.0 for month in range(1, 13)}
+        # Firm plan: fixed 150 hours per month for active months
+        # For mid-year starts, months before start get 0
+        targets = {month: 0.0 for month in range(1, 13)}
+        for month in range(start_month, 13):
+            targets[month] = 150.0
+        return targets
 
     # For Realistic and Optimistic plans, we need to consider the target date
     target_date = plan_config.target_date
@@ -272,20 +309,26 @@ def calculate_monthly_targets_for_plan(
         target_month = 12
 
     if plan_config.plan_type == PlanType.REALISTIC:
-        # Realistic plan: distribute across full year with intensity weights
-        return calculate_monthly_targets(year_config, end_month=12)
+        # Realistic plan: distribute remaining hours across remaining months
+        return calculate_monthly_targets(
+            year_config,
+            end_month=12,
+            target_hours=remaining_target,
+            start_month=start_month
+        )
 
     # Optimistic plan: may have early end date and maintenance hours after
     if plan_config.plan_type == PlanType.OPTIMISTIC:
-        annual_target = year_config.annual_target
+        # Adjust target_month if it's before start_month (user started late)
+        effective_target_month = max(target_month, start_month)
 
         # Check if there are maintenance hours after the target date
-        if plan_config.target_daily_hours_after and target_month < 12:
+        if plan_config.target_daily_hours_after and effective_target_month < 12:
             # Calculate hours to reserve for post-target maintenance
             holidays, vacation_days = extract_holidays_and_vacations(year_config)
             maintenance_hours = 0.0
 
-            for month in range(target_month + 1, 13):
+            for month in range(effective_target_month + 1, 13):
                 workdays = get_workdays_in_month(
                     year_config.year,
                     month,
@@ -295,17 +338,18 @@ def calculate_monthly_targets_for_plan(
                 maintenance_hours += len(workdays) * plan_config.target_daily_hours_after
 
             # Distribute remaining hours across months up to target
-            hours_before_target = annual_target - maintenance_hours
+            hours_before_target = remaining_target - maintenance_hours
 
             # Get the distribution for months before target
             targets = calculate_monthly_targets(
                 year_config,
-                end_month=target_month,
-                target_hours=hours_before_target
+                end_month=effective_target_month,
+                target_hours=hours_before_target,
+                start_month=start_month
             )
 
             # Add maintenance months
-            for month in range(target_month + 1, 13):
+            for month in range(effective_target_month + 1, 13):
                 workdays = get_workdays_in_month(
                     year_config.year,
                     month,
@@ -319,12 +363,17 @@ def calculate_monthly_targets_for_plan(
             # No maintenance hours - just compress into earlier months
             return calculate_monthly_targets(
                 year_config,
-                end_month=target_month,
-                target_hours=annual_target
+                end_month=effective_target_month,
+                target_hours=remaining_target,
+                start_month=start_month
             )
 
     # Fallback (shouldn't reach here with valid plan types)
-    return calculate_monthly_targets(year_config)
+    return calculate_monthly_targets(
+        year_config,
+        start_month=start_month,
+        target_hours=remaining_target
+    )
 
 
 def validate_plan_feasibility(

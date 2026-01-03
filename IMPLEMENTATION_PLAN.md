@@ -662,23 +662,46 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Allow users who start mid-year to enter historical hours.
 
 **Tasks:**
-- [ ] Add to setup flow: "Starting mid-year?" option
-- [ ] Create `templates/setup/catchup_entry.html`:
+- [x] Add to setup flow: "Starting mid-year?" option
+- [x] Create `templates/setup/midyear.html`:
   - Option to enter lump sum (total hours YTD)
   - Option to enter by month
   - Calculate and display what plans look like from here
-- [ ] Implement routes for historical entry
-- [ ] Ensure planning algorithm handles partial-year correctly
-- [ ] Test with various mid-year scenarios
+- [x] Implement routes for historical entry
+- [x] Ensure planning algorithm handles partial-year correctly
+- [x] Test with various mid-year scenarios
 
 **Acceptance Criteria:**
-- User can start app in any month
-- Can enter historical hours easily
-- Plans calculate correctly from current date forward
-- No errors or edge cases with partial-year data
+- [x] User can start app in any month
+- [x] Can enter historical hours easily
+- [x] Plans calculate correctly from current date forward
+- [x] No errors or edge cases with partial-year data
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> Completed. Implementation includes:
+>
+> **Model Changes:**
+> - Added `start_date` and `hours_pre_start` fields to `YearConfig`
+> - Created new `HistoricalMonth` model for by-month tracking
+>
+> **Calculator Updates:**
+> - Added `get_historical_hours()` helper function
+> - Updated `get_hours_billed_to_date()` to include historical hours
+> - Updated `get_expected_hours_to_date()` to respect start_date
+>
+> **Planner Updates:**
+> - Updated `calculate_monthly_targets_for_plan()` to distribute remaining hours across active months only
+> - Months before start_date get 0 hours target
+>
+> **UI:**
+> - Created step 2 in setup wizard: `templates/setup/midyear.html`
+> - HTMX-powered monthly entry grid: `templates/setup/partials/midyear_months.html`
+> - Updated `complete.html` to show historical data summary
+> - Skip option for users starting Jan 1
+>
+> **Tests:**
+> - Added `tests/test_midyear.py` with 13 tests covering all mid-year functionality
+> - All 177 tests pass
 
 ---
 

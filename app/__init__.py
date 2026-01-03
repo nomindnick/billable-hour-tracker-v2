@@ -43,10 +43,12 @@ def create_app(config_name: str = 'default') -> Flask:
     from app.routes.dashboard import dashboard_bp
     from app.routes.setup import setup_bp
     from app.routes.entries import entries_bp
+    from app.routes.views import views_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(setup_bp, url_prefix='/setup')
     app.register_blueprint(entries_bp, url_prefix='/entries')
+    app.register_blueprint(views_bp)  # No prefix - routes at /monthly, /history
 
     # Register CLI commands
     register_commands(app)

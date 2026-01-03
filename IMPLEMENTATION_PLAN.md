@@ -405,20 +405,20 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Add views for seeing the full month and historical data.
 
 **Tasks:**
-- [ ] Create `templates/monthly.html`:
+- [x] Create `templates/monthly.html`:
   - Calendar view of current month
   - Each day shows: target, actual (if entered), difference
   - Color coding for ahead/behind/not-yet days
   - Navigate between months
-- [ ] Create `templates/history.html`:
+- [x] Create `templates/history.html`:
   - Table view of all entries
   - Sortable by date
   - Monthly subtotals
   - YTD total
-- [ ] Implement routes:
+- [x] Implement routes:
   - GET `/monthly` and `/monthly/<year>/<month>`
   - GET `/history`
-- [ ] Add navigation between dashboard, monthly, and history views
+- [x] Add navigation between dashboard, monthly, and history views
 
 **Acceptance Criteria:**
 - Monthly calendar view shows clear daily breakdown
@@ -427,7 +427,28 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Easy navigation between views
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-03.** Implemented monthly calendar and history views:
+>
+> **Routes (`app/routes/views.py`):**
+> - `GET /monthly` - Redirects to current month
+> - `GET /monthly/<year>/<month>` - Calendar view for specific month with prev/next navigation
+> - `GET /history` - Full entry history with monthly subtotals and YTD summary
+>
+> **Helper Functions:**
+> - `get_calendar_data()` - Builds calendar grid using `calendar.monthcalendar()` with hours, targets, status colors
+> - `get_month_summary()` - Calculates monthly totals, progress percentage, workday counts
+> - `get_history_data()` - Aggregates all entries with targets, grouped by month with subtotals
+> - `get_day_status()` / `get_day_colors()` - Color coding: green (met), amber (behind), gray (missed), slate (off)
+>
+> **Templates:**
+> - `monthly.html` - 7-column calendar grid with day cells showing hours/target/diff, legend, navigation arrows
+> - `history.html` - YTD summary card, monthly breakdown table with progress bars, scrollable entries table with month separators
+>
+> **Navigation:**
+> - Added Monthly and History links to `base.html` header between Dashboard and Setup
+> - Month navigation limits to configured year ±1 for reasonable boundaries
+>
+> All 102 existing tests pass. Routes verified working with test client.
 
 ---
 

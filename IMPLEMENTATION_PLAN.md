@@ -348,19 +348,19 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Implement the quick hours entry form with immediate feedback.
 
 **Tasks:**
-- [ ] Add hours entry form to dashboard:
+- [x] Add hours entry form to dashboard:
   - Single number input for hours billed
   - Date selector (defaults to today, can select recent past dates)
   - Submit button
-- [ ] Implement HTMX submission:
+- [x] Implement HTMX submission:
   - POST `/entries` - save hours
   - Return updated dashboard section (partial HTML)
   - Dashboard updates without full page reload
-- [ ] Implement entry editing:
+- [x] Implement entry editing:
   - Click on recent entries to edit
   - PUT `/entries/<id>` - update hours
-- [ ] Show recent entries list (last 5-7 days)
-- [ ] Add positive feedback when entry results in being ahead
+- [x] Show recent entries list (last 5-7 days)
+- [x] Add positive feedback when entry results in being ahead
 
 **Acceptance Criteria:**
 - Can enter hours in under 10 seconds
@@ -369,7 +369,33 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Positive feedback for good performance ("Nice! You're 2 hours ahead this month")
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-02.** Implemented full daily hours entry system with HTMX for instant feedback:
+>
+> **Routes (`app/routes/entries.py`):**
+> - `POST /entries/` - Create or update entry for a date with validation (0-24 hours)
+> - `PUT /entries/<id>` - Update existing entry
+> - `GET /entries/recent` - Get last 7 days of entries with targets
+> - `GET /entries/<id>/edit` - Get inline edit form (context-aware for quick vs list editing)
+>
+> **Partial Templates (`app/templates/dashboard/partials/`):**
+> - `quick_entry_result.html` - Shows logged hours with feedback message after entry
+> - `quick_entry_edit.html` - Inline form for editing today's entry from hero section
+> - `quick_entry_form.html` - Entry form for today's hours
+> - `recent_entries.html` - List of last 7 days with edit capability and inline add for past days
+> - `entry_row.html` - Single entry row for HTMX updates
+> - `entry_edit_form.html` - Inline edit form for recent entries list
+>
+> **Dashboard Updates:**
+> - Hero section now has working entry form (replaced disabled placeholder)
+> - Added "Recent Entries" section that loads via HTMX
+> - Keyboard shortcut: Press 'e' to focus the hours input
+>
+> **Feedback System:**
+> - `get_entry_feedback()` generates encouraging messages based on plan status
+> - Messages vary by performance: "Excellent!", "Great work!", "Nice!", "Solid day!"
+> - Shows hours ahead/behind and remaining hours for the month
+>
+> All 102 existing tests pass. All routes tested and working.
 
 ---
 

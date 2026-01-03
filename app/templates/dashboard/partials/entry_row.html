@@ -1,0 +1,85 @@
+{#
+Single Entry Row Partial
+
+Returned after updating an entry to replace just that row.
+Maintains the same structure as rows in recent_entries.html.
+
+Used by: PUT /entries/<id> (HTMX response)
+#}
+
+<div id="entry-row-{{ item.date.isoformat() }}"
+     class="flex items-center justify-between py-2 px-3 rounded-lg
+            {% if item.is_today %}bg-primary-50 border border-primary-200
+            {% elif item.is_weekend %}bg-gray-50
+            {% elif item.hours is not none and item.met_target %}bg-green-50
+            {% elif item.hours is not none and not item.met_target %}bg-amber-50
+            {% else %}bg-white border border-gray-100{% endif %}">
+
+    <!-- Date -->
+    <div class="flex items-center space-x-3">
+        <div class="text-sm {% if item.is_today %}font-semibold text-primary-700{% else %}text-gray-600{% endif %}">
+            {% if item.is_today %}
+            Today
+            {% else %}
+            {{ item.date.strftime('%a %m/%d') }}
+            {% endif %}
+        </div>
+
+        {% if item.is_weekend %}
+        <span class="text-xs text-gray-400">Weekend</span>
+        {% endif %}
+    </div>
+
+    <!-- Hours and Actions -->
+    <div class="flex items-center space-x-3">
+        {% if item.hours is not none %}
+        <!-- Hours logged -->
+        <div class="text-right">
+            <span class="font-medium {% if item.met_target %}text-green-700{% else %}text-amber-700{% endif %}">
+                {{ "%.1f"|format(item.hours) }}h
+            </span>
+            {% if not item.is_weekend %}
+            <span class="text-xs text-gray-400">/ {{ "%.1f"|format(item.target) }}h</span>
+            {% endif %}
+        </div>
+
+        <!-- Edit button -->
+        {% if item.entry %}
+        <button type="button"
+                hx-get="{{ url_for('entries.edit_entry_form', entry_id=item.entry.id) }}"
+                hx-target="#entry-row-{{ item.date.isoformat() }}"
+                hx-swap="innerHTML"
+                class="text-gray-400 hover:text-gray-600 p-1"
+                title="Edit entry">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+        </button>
+        {% endif %}
+
+        {% elif not item.is_weekend %}
+        <!-- No entry yet -->
+        <form hx-post="{{ url_for('entries.create_entry') }}"
+              hx-target="#entry-row-{{ item.date.isoformat() }}"
+              hx-swap="outerHTML"
+              class="flex items-center space-x-2">
+            <input type="hidden" name="date" value="{{ item.date.isoformat() }}">
+            <input type="number"
+                   name="hours"
+                   step="0.5"
+                   min="0"
+                   max="24"
+                   placeholder="0.0"
+                   class="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
+            <button type="submit"
+                    class="px-2 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700">
+                Add
+            </button>
+        </form>
+        {% else %}
+        <!-- Weekend with no entry -->
+        <span class="text-gray-400 text-sm">-</span>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,51 @@
+{#
+Quick Entry Result Partial
+
+Displayed after successfully logging hours. Shows:
+- Confirmation of logged hours
+- Encouraging feedback message
+- Updated recent entries list
+
+Used by: POST /entries (HTMX response)
+#}
+
+<!-- Logged Hours Display -->
+<div class="text-right mb-4">
+    <p class="text-sm text-gray-500">Logged today</p>
+    <p class="text-2xl font-bold text-green-600">{{ "%.1f"|format(entry.hours_billed) }}h</p>
+</div>
+
+<!-- Feedback Message -->
+{% if feedback %}
+<div id="entry-feedback"
+     class="mb-4 p-3 rounded-lg text-sm
+            {% if feedback.type == 'success' %}bg-green-50 text-green-700 border border-green-200
+            {% elif feedback.type == 'warning' %}bg-amber-50 text-amber-700 border border-amber-200
+            {% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}"
+     role="alert">
+    {% if feedback.type == 'success' %}
+    <svg class="inline-block w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+    </svg>
+    {% endif %}
+    {{ feedback.message }}
+</div>
+{% endif %}
+
+<!-- Edit Button for Today's Entry -->
+<div class="flex justify-end">
+    <button type="button"
+            hx-get="{{ url_for('entries.edit_entry_form', entry_id=entry.id) }}"
+            hx-target="#quick-entry-container"
+            hx-swap="innerHTML"
+            class="text-sm text-primary-600 hover:text-primary-800 underline">
+        Edit
+    </button>
+</div>
+
+<!-- Trigger update of recent entries list -->
+<div hx-get="{{ url_for('entries.recent_entries') }}"
+     hx-trigger="load"
+     hx-target="#recent-entries-list"
+     hx-swap="innerHTML">
+</div>

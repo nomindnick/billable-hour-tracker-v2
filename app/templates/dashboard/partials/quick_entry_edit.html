@@ -1,0 +1,41 @@
+{#
+Quick Entry Edit Form
+
+Inline form for editing today's entry from the hero section.
+Uses a different target than the recent entries list edit.
+
+Used by: GET /entries/<id>/edit (when editing today's entry)
+#}
+
+<form hx-post="{{ url_for('entries.update_entry', entry_id=entry.id) }}"
+      hx-target="#quick-entry-container"
+      hx-swap="innerHTML"
+      class="space-y-3">
+
+    <div class="flex items-center space-x-2">
+        <input type="number"
+               name="hours"
+               step="0.5"
+               min="0"
+               max="24"
+               value="{{ entry.hours_billed }}"
+               class="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center text-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+               id="quick-hours-input"
+               autofocus>
+        <span class="text-gray-500">hours</span>
+    </div>
+
+    <div class="flex space-x-2">
+        <button type="submit"
+                class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors text-sm">
+            Save
+        </button>
+        <button type="button"
+                hx-get="{{ url_for('dashboard.index') }}"
+                hx-target="body"
+                hx-push-url="true"
+                class="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm">
+            Cancel
+        </button>
+    </div>
+</form>

@@ -33,27 +33,57 @@
                 {% endif %}
             </div>
             <div class="mt-4 md:mt-0">
-                <!-- Quick Entry Form Placeholder (full implementation in Sprint 4.2) -->
-                <div class="flex items-center space-x-3">
+                <!-- Quick Entry Form -->
+                <div id="quick-entry-container">
                     {% if today_entry %}
                     <div class="text-right">
                         <p class="text-sm text-gray-500">Logged today</p>
                         <p class="text-2xl font-bold text-green-600">{{ "%.1f"|format(today_entry.hours_billed) }}h</p>
-                    </div>
-                    {% else %}
-                    <div class="flex items-center space-x-2">
-                        <input type="number" step="0.5" min="0" max="24" placeholder="0.0"
-                               class="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center text-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                               id="quick-hours-input" disabled title="Entry coming in Sprint 4.2">
-                        <span class="text-gray-500">hours</span>
                         <button type="button"
-                                class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
-                                disabled title="Entry coming in Sprint 4.2">
-                            Log
+                                hx-get="{{ url_for('entries.edit_entry_form', entry_id=today_entry.id) }}"
+                                hx-target="#quick-entry-container"
+                                hx-swap="innerHTML"
+                                class="mt-1 text-sm text-primary-600 hover:text-primary-800 underline">
+                            Edit
                         </button>
                     </div>
+                    {% else %}
+                    <form hx-post="{{ url_for('entries.create_entry') }}"
+                          hx-target="#quick-entry-container"
+                          hx-swap="innerHTML"
+                          class="flex items-center space-x-2">
+                        <input type="hidden" name="date" value="{{ today.isoformat() }}">
+                        <input type="number"
+                               name="hours"
+                               step="0.5"
+                               min="0"
+                               max="24"
+                               placeholder="0.0"
+                               required
+                               class="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center text-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                               id="quick-hours-input">
+                        <span class="text-gray-500">hours</span>
+                        <button type="submit"
+                                class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors">
+                            Log
+                        </button>
+                    </form>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Entries -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Entries</h2>
+        <div id="recent-entries-list"
+             hx-get="{{ url_for('entries.recent_entries') }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <!-- Loaded via HTMX -->
+            <div class="text-center py-4">
+                <div class="animate-pulse text-gray-400">Loading...</div>
             </div>
         </div>
     </div>
@@ -315,6 +345,26 @@
                         text: 'Day of Month'
                     }
                 }
+            }
+        }
+    });
+
+    // Keyboard shortcut: Press 'e' to focus the quick entry input
+    document.addEventListener('keydown', function(event) {
+        // Don't trigger if user is typing in an input, textarea, or contenteditable
+        if (event.target.tagName === 'INPUT' ||
+            event.target.tagName === 'TEXTAREA' ||
+            event.target.isContentEditable) {
+            return;
+        }
+
+        // 'e' key focuses the hours input
+        if (event.key === 'e' || event.key === 'E') {
+            event.preventDefault();
+            const input = document.getElementById('quick-hours-input');
+            if (input) {
+                input.focus();
+                input.select();
             }
         }
     });

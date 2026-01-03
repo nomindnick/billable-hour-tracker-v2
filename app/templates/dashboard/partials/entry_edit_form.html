@@ -1,0 +1,50 @@
+{#
+Entry Edit Form Partial
+
+Inline form for editing an existing entry.
+Replaces the entry row with an editable form.
+
+Used by: GET /entries/<id>/edit (HTMX response)
+#}
+
+<form hx-post="{{ url_for('entries.update_entry', entry_id=entry.id) }}"
+      hx-target="#entry-row-{{ entry.date.isoformat() }}"
+      hx-swap="outerHTML"
+      class="flex items-center justify-between py-2 px-3 bg-white border-2 border-primary-300 rounded-lg shadow-sm">
+
+    <!-- Date and Target Info -->
+    <div class="flex items-center space-x-3">
+        <div class="text-sm font-medium text-gray-700">
+            {{ entry.date.strftime('%a %m/%d') }}
+        </div>
+        <span class="text-xs text-gray-400">Target: {{ "%.1f"|format(target) }}h</span>
+    </div>
+
+    <!-- Edit Controls -->
+    <div class="flex items-center space-x-2">
+        <input type="number"
+               name="hours"
+               step="0.5"
+               min="0"
+               max="24"
+               value="{{ entry.hours_billed }}"
+               class="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+               autofocus>
+        <span class="text-sm text-gray-500">hours</span>
+
+        <!-- Save Button -->
+        <button type="submit"
+                class="px-3 py-1 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 focus:ring-2 focus:ring-primary-500">
+            Save
+        </button>
+
+        <!-- Cancel Button -->
+        <button type="button"
+                hx-get="{{ url_for('entries.recent_entries') }}"
+                hx-target="#recent-entries-list"
+                hx-swap="innerHTML"
+                class="px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded hover:bg-gray-200">
+            Cancel
+        </button>
+    </div>
+</form>

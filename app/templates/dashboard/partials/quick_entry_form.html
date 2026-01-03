@@ -1,0 +1,30 @@
+{#
+Quick Entry Form Partial
+
+Shows the entry form for today's hours.
+Used when returning from edit mode back to entry mode.
+
+Used by: Various HTMX responses
+#}
+
+<form hx-post="{{ url_for('entries.create_entry') }}"
+      hx-target="#quick-entry-container"
+      hx-swap="innerHTML"
+      class="flex items-center space-x-2">
+    <input type="hidden" name="date" value="{{ today.isoformat() }}">
+    <input type="number"
+           name="hours"
+           step="0.5"
+           min="0"
+           max="24"
+           placeholder="0.0"
+           required
+           class="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center text-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+           id="quick-hours-input"
+           autofocus>
+    <span class="text-gray-500">hours</span>
+    <button type="submit"
+            class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors">
+        Log
+    </button>
+</form>

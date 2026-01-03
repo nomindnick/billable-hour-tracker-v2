@@ -9,12 +9,15 @@ import datetime
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
-from app.models import PlanType, SprintStatus, YearConfig
+from app.models import CatchUpSprint, PlanType, SprintStatus, YearConfig
 from app.services.catchup import (
     calculate_sprint_preview,
+    calculate_sprint_progress,
     create_catch_up_sprint,
     get_active_sprint,
     get_plan_statuses,
+    mark_sprint_completed,
+    mark_sprint_dismissed,
 )
 
 
@@ -219,3 +222,136 @@ def create_sprint():
     except ValueError as e:
         flash(str(e), "error")
         return redirect(url_for('catchup.new_sprint'))
+
+
+@catchup_bp.route('/<int:sprint_id>/dismiss', methods=['POST'])
+def dismiss_sprint(sprint_id):
+    """
+    Dismiss (cancel) an active catch-up sprint.
+
+    This marks the sprint as dismissed and returns the user to the dashboard.
+    Used when circumstances change and the sprint is no longer needed.
+    """
+    year_config = get_current_year_config()
+
+    if not year_config:
+        flash("Year configuration not found.", "error")
+        return redirect(url_for('dashboard.index'))
+
+    # Find the sprint
+    sprint = CatchUpSprint.query.filter_by(
+        id=sprint_id,
+        year_config_id=year_config.id,
+        status=SprintStatus.ACTIVE
+    ).first()
+
+    if not sprint:
+        flash("Sprint not found or already completed.", "error")
+        return redirect(url_for('dashboard.index'))
+
+    # Mark as dismissed
+    mark_sprint_dismissed(sprint)
+
+    flash(
+        "Sprint dismissed. You can start a new one whenever you're ready.",
+        "info"
+    )
+    return redirect(url_for('dashboard.index'))
+
+
+@catchup_bp.route('/<int:sprint_id>/complete', methods=['POST'])
+def complete_sprint(sprint_id):
+    """
+    Manually mark a catch-up sprint as completed.
+
+    This is typically called automatically when the target is hit,
+    but can also be triggered manually if needed.
+    """
+    year_config = get_current_year_config()
+
+    if not year_config:
+        flash("Year configuration not found.", "error")
+        return redirect(url_for('dashboard.index'))
+
+    # Find the sprint
+    sprint = CatchUpSprint.query.filter_by(
+        id=sprint_id,
+        year_config_id=year_config.id,
+        status=SprintStatus.ACTIVE
+    ).first()
+
+    if not sprint:
+        flash("Sprint not found or already completed.", "error")
+        return redirect(url_for('dashboard.index'))
+
+    # Mark as completed
+    mark_sprint_completed(sprint)
+
+    flash(
+        "Sprint completed! Great work on hitting your target!",
+        "success"
+    )
+    return redirect(url_for('dashboard.index'))
+
+
+@catchup_bp.route('/<int:sprint_id>/revise', methods=['GET'])
+def revise_sprint(sprint_id):
+    """
+    Show the sprint creation form pre-filled with current sprint parameters.
+
+    This allows users to adjust their sprint (longer duration, add weekend hours, etc.)
+    when the current one isn't working out.
+    """
+    year_config = get_current_year_config()
+
+    if not year_config:
+        flash("Please set up your year configuration first.", "info")
+        return redirect(url_for('setup.index'))
+
+    # Find the active sprint
+    sprint = CatchUpSprint.query.filter_by(
+        id=sprint_id,
+        year_config_id=year_config.id,
+        status=SprintStatus.ACTIVE
+    ).first()
+
+    if not sprint:
+        flash("Sprint not found or already completed.", "error")
+        return redirect(url_for('dashboard.index'))
+
+    # Get current progress
+    progress = calculate_sprint_progress(sprint, year_config)
+
+    # Get plan statuses
+    plan_statuses = get_plan_statuses(year_config)
+
+    # Prepare plan options
+    plan_options = []
+    for plan_type, status in plan_statuses.items():
+        plan_options.append({
+            'type': plan_type,
+            'name': get_plan_display_name(plan_type),
+            'hours_behind': abs(min(0, status.hours_ahead_or_behind)),
+            'status_label': status.status_label
+        })
+
+    # Sort by hours behind (most behind first)
+    plan_options.sort(key=lambda x: x['hours_behind'], reverse=True)
+
+    # Calculate remaining weeks
+    days_total = (sprint.end_date - datetime.date.today()).days + 1
+    suggested_weeks = max(1, min(6, (days_total // 7) + 1))
+
+    return render_template(
+        'catchup/create.html',
+        year_config=year_config,
+        plan_options=plan_options,
+        plan_statuses=plan_statuses,
+        PlanType=PlanType,
+        # Pre-fill values for revision
+        revising=True,
+        current_sprint=sprint,
+        current_progress=progress,
+        suggested_duration=suggested_weeks,
+        selected_plan_type=sprint.target_plan
+    )

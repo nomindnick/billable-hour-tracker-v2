@@ -135,22 +135,93 @@
         </div>
     </div>
 
-    <!-- Active Sprint Alert (if any) -->
-    {% if active_sprint %}
-    <div class="bg-purple-50 rounded-lg border border-purple-200 p-4">
-        <div class="flex items-start">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                </svg>
+    <!-- Active Sprint Card (if any) -->
+    {% if active_sprint and sprint_progress %}
+    <div class="bg-purple-50 rounded-lg border border-purple-200 p-6">
+        <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-semibold text-purple-900">Catch-Up Sprint</h3>
+                    <p class="text-sm text-purple-600">
+                        Targeting {{ active_sprint.target_plan.value|capitalize }} Plan
+                    </p>
+                </div>
             </div>
-            <div class="ml-3 flex-1">
-                <h3 class="text-sm font-medium text-purple-800">Catch-Up Sprint Active</h3>
-                <p class="mt-1 text-sm text-purple-700">
-                    Target: {{ active_sprint.target_hours }} hours by {{ active_sprint.end_date.strftime('%B %d') }}
-                </p>
+            <div class="flex space-x-2">
+                <a href="{{ url_for('catchup.revise_sprint', sprint_id=active_sprint.id) }}"
+                   class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-lg transition-colors">
+                    Revise
+                </a>
+                <form action="{{ url_for('catchup.dismiss_sprint', sprint_id=active_sprint.id) }}" method="POST" class="inline"
+                      onsubmit="return confirm('Dismiss this sprint? You can start a new one anytime.');">
+                    <button type="submit"
+                            class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        Dismiss
+                    </button>
+                </form>
             </div>
         </div>
+
+        <!-- Sprint Progress -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="bg-white rounded-lg p-4 border border-purple-100">
+                <p class="text-sm text-gray-500">Progress</p>
+                <p class="text-2xl font-bold text-purple-700">{{ sprint_progress.hours_billed }} / {{ sprint_progress.target_hours }}</p>
+                <p class="text-sm text-gray-500">hours</p>
+            </div>
+            <div class="bg-white rounded-lg p-4 border border-purple-100">
+                <p class="text-sm text-gray-500">Days Remaining</p>
+                <p class="text-2xl font-bold text-purple-700">{{ sprint_progress.days_remaining }}</p>
+                <p class="text-sm text-gray-500">workdays</p>
+            </div>
+            <div class="bg-white rounded-lg p-4 border border-purple-100">
+                <p class="text-sm text-gray-500">Daily Target</p>
+                <p class="text-2xl font-bold {% if sprint_progress.daily_target > 9.5 %}text-red-600{% else %}text-purple-700{% endif %}">
+                    {{ "%.1f"|format(sprint_progress.daily_target) }}
+                </p>
+                <p class="text-sm text-gray-500">hours/day</p>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mb-4">
+            <div class="flex justify-between text-sm text-purple-700 mb-1">
+                <span>{{ sprint_progress.percent_complete }}% complete</span>
+                <span>Due {{ active_sprint.end_date.strftime('%B %d') }}</span>
+            </div>
+            <div class="h-3 bg-purple-100 rounded-full overflow-hidden">
+                <div class="h-full bg-purple-500 rounded-full transition-all duration-300"
+                     style="width: {{ sprint_progress.percent_complete }}%"></div>
+            </div>
+        </div>
+
+        <!-- Status Message -->
+        <p class="text-sm text-purple-700">{{ sprint_progress.status_message }}</p>
+
+        <!-- Behind Pace Alert -->
+        {% if sprint_progress.is_behind %}
+        <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="h-5 w-5 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-amber-800">Falling behind sprint pace</p>
+                    <p class="text-sm text-amber-700">
+                        You're {{ sprint_progress.hours_behind }} hours behind where you should be.
+                        <a href="{{ url_for('catchup.revise_sprint', sprint_id=active_sprint.id) }}"
+                           class="underline hover:no-underline">Revise your sprint</a>
+                        to adjust the timeline or add weekend hours.
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
     {% else %}
     {# Show catch-up suggestion when behind but no active sprint #}

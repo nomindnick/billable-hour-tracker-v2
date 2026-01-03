@@ -19,16 +19,23 @@ from app.models import (
     YearConfig,
 )
 from app.services.catchup import (
+    BEHIND_THRESHOLD,
     CHALLENGING_TARGET,
     COMFORTABLE_TARGET,
     MAX_WEEKEND_HOURS,
     SprintPreview,
+    SprintProgress,
     calculate_sprint_preview,
+    calculate_sprint_progress,
     create_catch_up_sprint,
     get_active_sprint,
     get_plan_config_by_type,
     get_plan_statuses,
+    get_sprint_hours_billed,
     get_sprint_message,
+    get_sprint_progress_message,
+    mark_sprint_completed,
+    mark_sprint_dismissed,
 )
 
 
@@ -497,3 +504,337 @@ class TestGetPlanStatuses:
             year_config = db.session.get(YearConfig, basic_year_config.id)
             statuses = get_plan_statuses(year_config)
             assert statuses == {}
+
+
+# -----------------------------------------------------------------------------
+# Test get_sprint_hours_billed
+# -----------------------------------------------------------------------------
+
+class TestGetSprintHoursBilled:
+    """Tests for the get_sprint_hours_billed function."""
+
+    def test_returns_zero_when_no_entries(self, app, year_config_with_plans):
+        """Should return 0 when no entries in range."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, year_config_with_plans.id)
+            hours = get_sprint_hours_billed(
+                year_config,
+                datetime.date(2025, 1, 1),
+                datetime.date(2025, 1, 10)
+            )
+            assert hours == 0.0
+
+    def test_sums_entries_in_range(self, app, behind_year_config):
+        """Should sum hours for entries within the date range."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, behind_year_config.id)
+            # behind_year_config has 8 entries at 5 hours each = 40 hours
+            hours = get_sprint_hours_billed(
+                year_config,
+                datetime.date(2025, 1, 1),
+                datetime.date(2025, 1, 31)
+            )
+            assert hours == 40.0
+
+    def test_excludes_entries_outside_range(self, app, behind_year_config):
+        """Should only include entries within the date range."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, behind_year_config.id)
+            # Only check a subset of dates
+            hours = get_sprint_hours_billed(
+                year_config,
+                datetime.date(2025, 1, 6),
+                datetime.date(2025, 1, 7)
+            )
+            # Should only include entries for days 6 and 7
+            assert hours == 10.0  # 2 days * 5 hours
+
+
+# -----------------------------------------------------------------------------
+# Test get_sprint_progress_message
+# -----------------------------------------------------------------------------
+
+class TestGetSprintProgressMessage:
+    """Tests for the get_sprint_progress_message function."""
+
+    def test_completed_message(self):
+        """Should return completion message when target hit."""
+        msg = get_sprint_progress_message(
+            hours_billed=50.0,
+            target_hours=50.0,
+            hours_behind=0.0,
+            is_completed=True,
+            is_behind=False,
+            days_remaining=5
+        )
+        assert "complete" in msg.lower()
+
+    def test_sprint_ended_behind(self):
+        """Should return appropriate message when sprint ended behind."""
+        msg = get_sprint_progress_message(
+            hours_billed=40.0,
+            target_hours=50.0,
+            hours_behind=10.0,
+            is_completed=False,
+            is_behind=True,
+            days_remaining=0
+        )
+        assert "short" in msg.lower() or "ended" in msg.lower()
+
+    def test_is_behind_message(self):
+        """Should mention behind pace when significantly behind."""
+        msg = get_sprint_progress_message(
+            hours_billed=20.0,
+            target_hours=50.0,
+            hours_behind=10.0,
+            is_completed=False,
+            is_behind=True,
+            days_remaining=5
+        )
+        assert "behind" in msg.lower() or "revise" in msg.lower()
+
+    def test_progress_message_75_percent(self):
+        """Should encourage when 75%+ complete."""
+        msg = get_sprint_progress_message(
+            hours_billed=40.0,
+            target_hours=50.0,
+            hours_behind=0.0,
+            is_completed=False,
+            is_behind=False,
+            days_remaining=3
+        )
+        assert "almost" in msg.lower() or "momentum" in msg.lower()
+
+
+# -----------------------------------------------------------------------------
+# Test calculate_sprint_progress
+# -----------------------------------------------------------------------------
+
+class TestCalculateSprintProgress:
+    """Tests for the calculate_sprint_progress function."""
+
+    def test_calculates_hours_billed_during_sprint(self, app, behind_year_config):
+        """Should correctly calculate hours billed during sprint period."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, behind_year_config.id)
+
+            # Create a sprint starting Jan 6 (when entries begin)
+            sprint = create_catch_up_sprint(
+                year_config,
+                PlanType.REALISTIC,
+                duration_weeks=2,
+                as_of_date=datetime.date(2025, 1, 6)
+            )
+
+            progress = calculate_sprint_progress(
+                sprint,
+                year_config,
+                as_of_date=datetime.date(2025, 1, 15)
+            )
+
+            # Should include entries from Jan 6-15
+            assert progress.hours_billed > 0
+            assert isinstance(progress, SprintProgress)
+
+    def test_calculates_days_remaining(self, app, behind_year_config):
+        """Should calculate days remaining in sprint."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, behind_year_config.id)
+
+            sprint = create_catch_up_sprint(
+                year_config,
+                PlanType.REALISTIC,
+                duration_weeks=2,
+                as_of_date=datetime.date(2025, 1, 6)
+            )
+
+            # Check progress at start of sprint
+            progress = calculate_sprint_progress(
+                sprint,
+                year_config,
+                as_of_date=datetime.date(2025, 1, 6)
+            )
+
+            # Should have workdays remaining
+            assert progress.days_remaining > 0
+
+    def test_detects_completion(self, app, year_config_with_plans):
+        """Should detect when sprint target is achieved."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, year_config_with_plans.id)
+
+            # Create a sprint manually with small target
+            sprint = CatchUpSprint(
+                year_config_id=year_config.id,
+                target_plan=PlanType.REALISTIC,
+                start_date=datetime.date(2025, 1, 6),
+                end_date=datetime.date(2025, 1, 19),
+                target_hours=20.0,
+                status=SprintStatus.ACTIVE
+            )
+            db.session.add(sprint)
+            db.session.flush()
+
+            # Add entries that exceed target
+            for day in [6, 7, 8, 9, 10]:
+                entry = DailyEntry(
+                    year_config_id=year_config.id,
+                    date=datetime.date(2025, 1, day),
+                    hours_billed=5.0  # 25 total
+                )
+                db.session.add(entry)
+            db.session.commit()
+
+            progress = calculate_sprint_progress(
+                sprint,
+                year_config,
+                as_of_date=datetime.date(2025, 1, 10)
+            )
+
+            assert progress.is_completed
+            assert progress.hours_billed >= progress.target_hours
+
+    def test_detects_behind_pace(self, app, year_config_with_plans):
+        """Should detect when user is behind sprint pace."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, year_config_with_plans.id)
+
+            # Create a sprint with target that requires more hours
+            sprint = CatchUpSprint(
+                year_config_id=year_config.id,
+                target_plan=PlanType.REALISTIC,
+                start_date=datetime.date(2025, 1, 6),
+                end_date=datetime.date(2025, 1, 17),  # ~2 weeks, ~10 workdays
+                target_hours=80.0,  # 8 hours/day expected
+                status=SprintStatus.ACTIVE
+            )
+            db.session.add(sprint)
+            db.session.flush()
+
+            # Add entries that are behind pace
+            for day in [6, 7, 8, 9, 10]:  # 5 workdays
+                entry = DailyEntry(
+                    year_config_id=year_config.id,
+                    date=datetime.date(2025, 1, day),
+                    hours_billed=4.0  # Only 4 hours/day = 20 total
+                )
+                db.session.add(entry)
+            db.session.commit()
+
+            # Expected by day 10: ~40 hours (5 days * 8)
+            # Actual: 20 hours
+            # Behind: 20 hours (way over threshold)
+            progress = calculate_sprint_progress(
+                sprint,
+                year_config,
+                as_of_date=datetime.date(2025, 1, 10)
+            )
+
+            assert progress.hours_behind > BEHIND_THRESHOLD
+            assert progress.is_behind
+
+    def test_calculates_daily_target(self, app, year_config_with_plans):
+        """Should calculate required daily target for remaining days."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, year_config_with_plans.id)
+
+            sprint = CatchUpSprint(
+                year_config_id=year_config.id,
+                target_plan=PlanType.REALISTIC,
+                start_date=datetime.date(2025, 1, 6),
+                end_date=datetime.date(2025, 1, 17),
+                target_hours=50.0,
+                status=SprintStatus.ACTIVE
+            )
+            db.session.add(sprint)
+            db.session.commit()
+
+            progress = calculate_sprint_progress(
+                sprint,
+                year_config,
+                as_of_date=datetime.date(2025, 1, 6)
+            )
+
+            # Daily target should be target_hours / remaining_days
+            assert progress.daily_target > 0
+            assert progress.days_remaining > 0
+
+
+# -----------------------------------------------------------------------------
+# Test mark_sprint_completed and mark_sprint_dismissed
+# -----------------------------------------------------------------------------
+
+class TestSprintStatusChanges:
+    """Tests for mark_sprint_completed and mark_sprint_dismissed."""
+
+    def test_mark_completed(self, app, behind_year_config):
+        """Should mark sprint as completed."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, behind_year_config.id)
+
+            sprint = create_catch_up_sprint(
+                year_config,
+                PlanType.REALISTIC,
+                duration_weeks=2,
+                as_of_date=datetime.date(2025, 1, 16)
+            )
+
+            mark_sprint_completed(sprint)
+
+            # Reload from database
+            sprint = db.session.get(CatchUpSprint, sprint.id)
+            assert sprint.status == SprintStatus.COMPLETED
+            assert sprint.completed_at is not None
+
+    def test_mark_dismissed(self, app, behind_year_config):
+        """Should mark sprint as dismissed."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, behind_year_config.id)
+
+            sprint = create_catch_up_sprint(
+                year_config,
+                PlanType.REALISTIC,
+                duration_weeks=2,
+                as_of_date=datetime.date(2025, 1, 16)
+            )
+
+            mark_sprint_dismissed(sprint)
+
+            # Reload from database
+            sprint = db.session.get(CatchUpSprint, sprint.id)
+            assert sprint.status == SprintStatus.DISMISSED
+            assert sprint.completed_at is not None
+
+    def test_completed_sprint_not_found_by_get_active(self, app, behind_year_config):
+        """Completed sprint should not be returned by get_active_sprint."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, behind_year_config.id)
+
+            sprint = create_catch_up_sprint(
+                year_config,
+                PlanType.REALISTIC,
+                duration_weeks=2,
+                as_of_date=datetime.date(2025, 1, 16)
+            )
+
+            mark_sprint_completed(sprint)
+
+            active = get_active_sprint(year_config)
+            assert active is None
+
+    def test_dismissed_sprint_not_found_by_get_active(self, app, behind_year_config):
+        """Dismissed sprint should not be returned by get_active_sprint."""
+        with app.app_context():
+            year_config = db.session.get(YearConfig, behind_year_config.id)
+
+            sprint = create_catch_up_sprint(
+                year_config,
+                PlanType.REALISTIC,
+                duration_weeks=2,
+                as_of_date=datetime.date(2025, 1, 16)
+            )
+
+            mark_sprint_dismissed(sprint)
+
+            active = get_active_sprint(year_config)
+            assert active is None

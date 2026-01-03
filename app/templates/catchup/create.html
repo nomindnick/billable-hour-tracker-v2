@@ -1,17 +1,43 @@
 {% extends "base.html" %}
 
-{% block title %}Start Catch-Up Sprint | Billable Hours Planner{% endblock %}
+{% block title %}{% if revising %}Revise{% else %}Start{% endif %} Catch-Up Sprint | Billable Hours Planner{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
     <!-- Page Header -->
     <div class="mb-8">
+        {% if revising %}
+        <h1 class="text-3xl font-bold text-gray-900">Revise Your Sprint</h1>
+        <p class="mt-2 text-gray-600">
+            No problem! Adjusting your sprint is a smart move. Let's reconfigure it so it works better for you.
+        </p>
+        {% else %}
         <h1 class="text-3xl font-bold text-gray-900">Start a Catch-Up Sprint</h1>
         <p class="mt-2 text-gray-600">
             Let's create a plan to help you get back on track. Catch-up sprints are a normal part of the process -
             everyone has slow periods, and this tool helps you recover smoothly.
         </p>
+        {% endif %}
     </div>
+
+    {% if revising and current_progress %}
+    <!-- Current Sprint Status -->
+    <div class="bg-purple-50 rounded-lg border border-purple-200 p-4 mb-6">
+        <div class="flex items-start">
+            <svg class="h-5 w-5 text-purple-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+            <div class="ml-3">
+                <p class="text-sm font-medium text-purple-800">Current Sprint Progress</p>
+                <p class="text-sm text-purple-700">
+                    You've billed {{ current_progress.hours_billed }} of {{ current_progress.target_hours }} hours
+                    ({{ current_progress.percent_complete }}% complete).
+                    Creating a new sprint will replace the current one.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Current Status Section -->
     <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 mb-6">
@@ -53,7 +79,7 @@
                     id="plan_type"
                     name="plan_type"
                     hx-post="{{ url_for('catchup.preview_sprint') }}"
-                    hx-trigger="change"
+                    hx-trigger="change, load delay:100ms"
                     hx-target="#sprint-preview"
                     hx-include="#sprint-form"
                     class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -61,7 +87,7 @@
                 >
                     <option value="">Select a plan...</option>
                     {% for plan in plan_options %}
-                    <option value="{{ plan.type.value }}">
+                    <option value="{{ plan.type.value }}" {% if selected_plan_type and plan.type == selected_plan_type %}selected{% endif %}>
                         {{ plan.name }} ({{ "%.1f"|format(plan.hours_behind) }} hours behind)
                     </option>
                     {% endfor %}
@@ -83,8 +109,9 @@
                     class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     required
                 >
+                    {% set default_duration = suggested_duration if suggested_duration else 2 %}
                     {% for weeks in range(1, 7) %}
-                    <option value="{{ weeks }}" {% if weeks == 2 %}selected{% endif %}>
+                    <option value="{{ weeks }}" {% if weeks == default_duration %}selected{% endif %}>
                         {{ weeks }} week{{ 's' if weeks > 1 else '' }}
                     </option>
                     {% endfor %}
@@ -169,7 +196,7 @@
                     disabled
                     class="inline-flex items-center px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Start Sprint
+                    {% if revising %}Update Sprint{% else %}Start Sprint{% endif %}
                 </button>
             </div>
         </form>
@@ -177,10 +204,16 @@
 
     <!-- Encouragement -->
     <div class="text-center text-sm text-gray-500">
+        {% if revising %}
+        <p>
+            Revising your sprint shows good self-awareness. The goal is progress, not perfection.
+        </p>
+        {% else %}
         <p>
             Remember: catch-up sprints are temporary adjustments, not permanent changes.
             Focus on the sprint, and you'll be back on track soon.
         </p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

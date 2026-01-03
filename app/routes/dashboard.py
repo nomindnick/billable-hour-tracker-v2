@@ -28,6 +28,10 @@ from app.services.planner import (
     calculate_monthly_targets_for_plan,
     extract_holidays_and_vacations,
 )
+from app.services.catchup import (
+    calculate_sprint_progress,
+    mark_sprint_completed,
+)
 
 
 # Create the dashboard blueprint
@@ -314,11 +318,25 @@ def index():
         monthly = {'hours_billed': 0, 'target': 0, 'progress_pct': 0,
                    'days_elapsed': 0, 'days_total': 0}
 
-    # Check for active catch-up sprint
+    # Check for active catch-up sprint and calculate progress
     active_sprint = CatchUpSprint.query.filter_by(
         year_config_id=year_config.id,
         status=SprintStatus.ACTIVE
     ).first()
+
+    sprint_progress = None
+    if active_sprint:
+        sprint_progress = calculate_sprint_progress(active_sprint, year_config, today)
+
+        # Auto-complete if target achieved
+        if sprint_progress.is_completed:
+            mark_sprint_completed(active_sprint)
+            flash(
+                f"Sprint complete! You hit your target of {active_sprint.target_hours:.1f} hours!",
+                "success"
+            )
+            active_sprint = None
+            sprint_progress = None
 
     # Get chart data
     chart_data = get_chart_data(year_config, today)
@@ -337,6 +355,7 @@ def index():
         weekly=weekly,
         monthly=monthly,
         active_sprint=active_sprint,
+        sprint_progress=sprint_progress,
         chart_data=chart_data,
         today_entry=today_entry,
     )

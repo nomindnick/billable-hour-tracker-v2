@@ -18,7 +18,7 @@ from datetime import timedelta
 from typing import Optional
 
 from app import db
-from app.models import CatchUpSprint, PlanConfig, PlanType, SprintStatus, YearConfig
+from app.models import CatchUpSprint, DailyEntry, PlanConfig, PlanType, SprintStatus, YearConfig
 from app.services.calculator import calculate_plan_status, PlanStatus
 from app.services.calendar_utils import (
     get_workdays_in_range,
@@ -37,6 +37,9 @@ MAX_WEEKEND_HOURS = 4.0
 # Thresholds for sprint feasibility messaging
 COMFORTABLE_TARGET = 7.5   # Daily target considered comfortable
 CHALLENGING_TARGET = 9.0   # Daily target that's challenging but doable
+
+# Threshold for "falling behind" sprint pace (hours)
+BEHIND_THRESHOLD = 3.0
 
 
 # -----------------------------------------------------------------------------
@@ -75,6 +78,42 @@ class SprintPreview:
     message_type: str  # 'success', 'warning', 'error'
     start_date: datetime.date
     end_date: datetime.date
+
+
+@dataclass
+class SprintProgress:
+    """
+    Current progress of an active catch-up sprint.
+
+    This provides users with visibility into how they're tracking against
+    their sprint goal, with supportive messaging for different scenarios.
+
+    Attributes:
+        hours_billed: Hours billed during the sprint period
+        target_hours: Sprint target total hours
+        hours_remaining: How many more hours needed (target - billed)
+        days_elapsed: Workdays elapsed since sprint started
+        days_remaining: Workdays remaining in sprint
+        daily_target: Required hours per remaining workday to complete sprint
+        percent_complete: Progress as percentage (0-100)
+        expected_hours: Hours expected to be billed by now based on pace
+        hours_behind: How far behind expected pace (0 if ahead/on track)
+        is_behind: True if more than BEHIND_THRESHOLD hours behind pace
+        is_completed: True if target hours achieved
+        status_message: User-friendly progress message
+    """
+    hours_billed: float
+    target_hours: float
+    hours_remaining: float
+    days_elapsed: int
+    days_remaining: int
+    daily_target: float
+    percent_complete: float
+    expected_hours: float
+    hours_behind: float
+    is_behind: bool
+    is_completed: bool
+    status_message: str
 
 
 # -----------------------------------------------------------------------------
@@ -402,3 +441,241 @@ def get_plan_statuses(
             )
 
     return statuses
+
+
+# -----------------------------------------------------------------------------
+# Sprint Tracking Functions
+# -----------------------------------------------------------------------------
+
+def get_sprint_hours_billed(
+    year_config: YearConfig,
+    start_date: datetime.date,
+    end_date: datetime.date
+) -> float:
+    """
+    Get total hours billed during a date range.
+
+    Args:
+        year_config: The year configuration
+        start_date: Start of the period (inclusive)
+        end_date: End of the period (inclusive)
+
+    Returns:
+        Total hours billed in the period
+    """
+    entries = DailyEntry.query.filter(
+        DailyEntry.year_config_id == year_config.id,
+        DailyEntry.date >= start_date,
+        DailyEntry.date <= end_date
+    ).all()
+
+    return sum(entry.hours_billed for entry in entries)
+
+
+def get_sprint_progress_message(
+    hours_billed: float,
+    target_hours: float,
+    hours_behind: float,
+    is_completed: bool,
+    is_behind: bool,
+    days_remaining: int
+) -> str:
+    """
+    Generate a supportive status message based on sprint progress.
+
+    Args:
+        hours_billed: Hours billed during sprint
+        target_hours: Sprint target
+        hours_behind: How far behind expected pace
+        is_completed: Whether sprint target is achieved
+        is_behind: Whether significantly behind pace
+        days_remaining: Workdays remaining in sprint
+
+    Returns:
+        User-friendly status message
+    """
+    if is_completed:
+        return "Sprint complete! You hit your target!"
+
+    if days_remaining == 0:
+        if hours_behind > 0:
+            return f"Sprint ended {hours_behind:.1f} hours short. That's okay - you can start a new one!"
+        return "Sprint period ended. Great effort!"
+
+    if is_behind:
+        return f"You're {hours_behind:.1f} hours behind pace. Consider revising your sprint or adding weekend hours."
+
+    # Calculate rough progress
+    percent = (hours_billed / target_hours * 100) if target_hours > 0 else 0
+
+    if percent >= 75:
+        return "Almost there! Keep up the momentum!"
+    if percent >= 50:
+        return "Halfway there! You're making great progress."
+    if percent >= 25:
+        return "Good start! Keep going, you've got this."
+
+    return "Sprint in progress. Stay focused and consistent!"
+
+
+def calculate_sprint_progress(
+    sprint: CatchUpSprint,
+    year_config: YearConfig,
+    as_of_date: Optional[datetime.date] = None
+) -> SprintProgress:
+    """
+    Calculate the current progress of an active sprint.
+
+    This function provides all the data needed to display sprint status
+    on the dashboard, including hours billed, days remaining, and whether
+    the user is falling behind pace.
+
+    Args:
+        sprint: The active catch-up sprint
+        year_config: The year configuration
+        as_of_date: Calculate progress as of this date (defaults to today)
+
+    Returns:
+        SprintProgress with all calculated metrics
+
+    Examples:
+        >>> sprint = get_active_sprint(year_config)
+        >>> progress = calculate_sprint_progress(sprint, year_config)
+        >>> progress.is_completed
+        False
+        >>> progress.daily_target
+        8.5
+    """
+    if as_of_date is None:
+        as_of_date = datetime.date.today()
+
+    # Get holidays and vacations for workday calculations
+    holidays, vacation_days = extract_holidays_and_vacations(year_config)
+
+    # Calculate hours billed during sprint
+    # Use the earlier of today or sprint end date
+    effective_end = min(as_of_date, sprint.end_date)
+    hours_billed = get_sprint_hours_billed(
+        year_config,
+        sprint.start_date,
+        effective_end
+    )
+
+    target_hours = sprint.target_hours
+    hours_remaining = max(0.0, target_hours - hours_billed)
+
+    # Is sprint target achieved?
+    is_completed = hours_billed >= target_hours
+
+    # Calculate days elapsed and remaining
+    if as_of_date < sprint.start_date:
+        # Sprint hasn't started yet
+        elapsed_workdays = get_workdays_in_range(
+            sprint.start_date, sprint.start_date, holidays, vacation_days
+        )
+        days_elapsed = 0
+        remaining_workdays = get_workdays_in_range(
+            sprint.start_date, sprint.end_date, holidays, vacation_days
+        )
+    elif as_of_date > sprint.end_date:
+        # Sprint has ended
+        elapsed_workdays = get_workdays_in_range(
+            sprint.start_date, sprint.end_date, holidays, vacation_days
+        )
+        days_elapsed = len(elapsed_workdays)
+        remaining_workdays = []
+    else:
+        # Sprint is in progress
+        elapsed_workdays = get_workdays_in_range(
+            sprint.start_date, as_of_date, holidays, vacation_days
+        )
+        days_elapsed = len(elapsed_workdays)
+
+        # Remaining days start from tomorrow
+        next_day = as_of_date + timedelta(days=1)
+        if next_day <= sprint.end_date:
+            remaining_workdays = get_workdays_in_range(
+                next_day, sprint.end_date, holidays, vacation_days
+            )
+        else:
+            remaining_workdays = []
+
+    days_remaining = len(remaining_workdays)
+
+    # Calculate total workdays in sprint for expected pace
+    all_workdays = get_workdays_in_range(
+        sprint.start_date, sprint.end_date, holidays, vacation_days
+    )
+    total_workdays = len(all_workdays)
+
+    # Calculate expected hours (linear pace through sprint)
+    if total_workdays > 0 and days_elapsed > 0:
+        expected_hours = (target_hours / total_workdays) * days_elapsed
+    else:
+        expected_hours = 0.0
+
+    # Calculate how far behind expected pace
+    hours_behind = max(0.0, expected_hours - hours_billed)
+    is_behind = hours_behind > BEHIND_THRESHOLD
+
+    # Calculate daily target for remaining days
+    if days_remaining > 0:
+        daily_target = hours_remaining / days_remaining
+        # Cap at maximum but don't hide the real number in progress display
+        daily_target = round(daily_target, 2)
+    else:
+        # No days remaining
+        daily_target = 0.0
+
+    # Calculate percentage complete
+    percent_complete = (hours_billed / target_hours * 100) if target_hours > 0 else 0
+    percent_complete = min(100.0, round(percent_complete, 1))
+
+    # Generate status message
+    status_message = get_sprint_progress_message(
+        hours_billed=hours_billed,
+        target_hours=target_hours,
+        hours_behind=hours_behind,
+        is_completed=is_completed,
+        is_behind=is_behind,
+        days_remaining=days_remaining
+    )
+
+    return SprintProgress(
+        hours_billed=round(hours_billed, 2),
+        target_hours=round(target_hours, 2),
+        hours_remaining=round(hours_remaining, 2),
+        days_elapsed=days_elapsed,
+        days_remaining=days_remaining,
+        daily_target=daily_target,
+        percent_complete=percent_complete,
+        expected_hours=round(expected_hours, 2),
+        hours_behind=round(hours_behind, 2),
+        is_behind=is_behind,
+        is_completed=is_completed,
+        status_message=status_message
+    )
+
+
+def mark_sprint_completed(sprint: CatchUpSprint) -> None:
+    """
+    Mark a sprint as completed (target achieved).
+
+    Args:
+        sprint: The sprint to mark as completed
+    """
+    sprint.status = SprintStatus.COMPLETED
+    sprint.completed_at = datetime.datetime.utcnow()
+    db.session.commit()
+
+
+def mark_sprint_dismissed(sprint: CatchUpSprint) -> None:
+    """
+    Mark a sprint as dismissed (user canceled it).
+
+    Args:
+        sprint: The sprint to dismiss
+    """
+    sprint.status = SprintStatus.DISMISSED
+    sprint.completed_at = datetime.datetime.utcnow()
+    db.session.commit()

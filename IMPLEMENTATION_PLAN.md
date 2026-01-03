@@ -522,23 +522,23 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Integrate active catch-up sprint into the dashboard and daily flow.
 
 **Tasks:**
-- [ ] Add sprint status to dashboard:
+- [x] Add sprint status to dashboard:
   - Show as fourth "plan" card when active
   - Display sprint progress (hours billed vs. target)
   - Days remaining in sprint
   - Daily target for sprint
-- [ ] Implement sprint monitoring:
+- [x] Implement sprint monitoring:
   - Check if user is falling behind sprint (>3 hours behind)
   - Show proactive alert: "You're behind your catch-up plan. Want to revise?"
-- [ ] Implement sprint completion:
+- [x] Implement sprint completion:
   - Auto-detect when sprint target is hit
   - Show success message with positive feedback
   - Mark sprint as completed
-- [ ] Implement sprint revision:
+- [x] Implement sprint revision:
   - "Revise Sprint" button
   - Pre-fill form with current sprint parameters
   - Create new sprint, mark old as "revised"
-- [ ] Implement sprint dismissal:
+- [x] Implement sprint dismissal:
   - "Dismiss Sprint" option
   - Confirmation dialog
   - Mark sprint as dismissed
@@ -551,7 +551,43 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Can dismiss sprint if circumstances change
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-03.** Implemented full catch-up sprint tracking and integration:
+>
+> **Service Layer (`app/services/catchup.py`):**
+> - Added `SprintProgress` dataclass with 12 fields: hours_billed, target_hours, hours_remaining, days_elapsed, days_remaining, daily_target, percent_complete, expected_hours, hours_behind, is_behind, is_completed, status_message
+> - `calculate_sprint_progress()` - Main function calculating all sprint tracking metrics
+> - `get_sprint_hours_billed()` - Helper to sum hours billed during sprint period
+> - `get_sprint_progress_message()` - Generates supportive status messages based on progress
+> - `mark_sprint_completed()` and `mark_sprint_dismissed()` - Status change functions
+> - Added `BEHIND_THRESHOLD = 3.0` constant for behind-pace detection
+>
+> **Routes (`app/routes/catchup.py`):**
+> - `POST /catchup/<id>/dismiss` - Dismiss active sprint with confirmation
+> - `POST /catchup/<id>/complete` - Manual completion (usually auto-detected)
+> - `GET /catchup/<id>/revise` - Show creation form pre-filled with current sprint params
+>
+> **Dashboard Updates (`app/routes/dashboard.py`):**
+> - Calculate sprint progress when active sprint exists
+> - Auto-complete sprint when target achieved (with flash message)
+> - Pass `sprint_progress` to template
+>
+> **Dashboard Template (`app/templates/dashboard.html`):**
+> - Expanded sprint card with 3-column stats grid (Progress, Days Remaining, Daily Target)
+> - Progress bar with percentage and due date
+> - Status message from service layer
+> - Behind-pace alert with revise link when `is_behind` is True
+> - Action buttons: Revise and Dismiss (with JS confirmation)
+>
+> **Revision Flow (`app/templates/catchup/create.html`):**
+> - Template updated to handle revision mode with `revising` flag
+> - Shows current sprint progress info when revising
+> - Pre-selects plan type and duration based on current sprint
+> - Updated button text and encouragement messages
+>
+> **Testing:**
+> - Added 16 new tests to `tests/test_catchup.py` (total 38 catchup tests)
+> - Test classes: TestGetSprintHoursBilled, TestGetSprintProgressMessage, TestCalculateSprintProgress, TestSprintStatusChanges
+> - All 151 tests pass
 
 ---
 

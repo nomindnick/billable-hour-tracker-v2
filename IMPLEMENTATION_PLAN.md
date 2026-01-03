@@ -305,21 +305,21 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Build the main dashboard showing current status across all plans.
 
 **Tasks:**
-- [ ] Create `templates/dashboard.html` with sections:
+- [x] Create `templates/dashboard.html` with sections:
   - **Today's Focus**: Current date, today's target (Realistic plan emphasized), quick entry form
   - **Weekly Progress**: Hours billed this week vs. target
   - **Monthly Progress**: Visual progress bar for current month
   - **Plan Status Cards**: Three cards showing each plan's status
-- [ ] Implement `routes/dashboard.py`:
+- [x] Implement `routes/dashboard.py`:
   - GET `/` or `/dashboard` - main dashboard view
   - Fetch all calculated data from services
-- [ ] Create status card component showing:
+- [x] Create status card component showing:
   - Plan name
   - Hours ahead/behind
   - Status label with color coding (green=ahead, yellow=slightly behind, red=needs catch-up)
   - Today's target for this plan
-- [ ] Add Chart.js for monthly progress visualization
-- [ ] Handle edge case: no year configured → redirect to setup
+- [x] Add Chart.js for monthly progress visualization
+- [x] Handle edge case: no year configured → redirect to setup
 
 **Acceptance Criteria:**
 - Dashboard loads with all plan statuses
@@ -329,7 +329,16 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Clean, uncluttered UI that's easy to scan
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-02.** Implemented the full dashboard with all required sections:
+> - **Today's Focus**: Hero section with date, today's Realistic plan target (emphasized in blue), and placeholder for quick entry (full implementation in Sprint 4.2). Shows catch-up warning if behind pace.
+> - **Weekly Progress**: Shows hours billed vs target with progress bar and remaining workdays.
+> - **Monthly Progress**: Shows hours billed vs target with progress bar, percentage complete, and day X of Y indicator.
+> - **Plan Status Cards**: Three cards (Firm, Realistic with "Primary" badge, Optimistic) showing status badge (color-coded: green for ahead/on track, amber for slightly behind, red for catch-up recommended), hours ahead/behind with +/- display, today's target, and remaining hours this month.
+> - **Monthly Chart**: Chart.js bar chart showing daily hours billed for current month. Workdays with no entry shown in gray, days with hours in blue, future days very light.
+> - **YTD Summary**: Shows total billed, annual target, remaining hours, and progress percentage.
+> - **Active Sprint Alert**: Purple banner shown when a catch-up sprint is active.
+>
+> Helper functions added: `get_week_boundaries()`, `calculate_weekly_progress()`, `calculate_monthly_progress()`, `get_plan_display_name()`, `get_status_color_classes()`, `get_chart_data()`. Edge case handled: redirects to `/setup/` with flash message when no YearConfig exists. All 102 existing tests pass.
 
 ---
 

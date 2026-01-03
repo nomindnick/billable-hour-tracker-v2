@@ -601,17 +601,17 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Generate downloadable charts showing plans vs. actual.
 
 **Tasks:**
-- [ ] Install Matplotlib or Plotly for chart generation
-- [ ] Create `services/export.py`:
+- [x] Install Matplotlib or Plotly for chart generation
+- [x] Create `services/export.py`:
   - Generate line chart with all three plans' trajectories
   - Overlay actual hours billed as a fourth line
   - Monthly breakdown on x-axis
   - Clear legend and labels
-- [ ] Implement export route:
+- [x] Implement export route:
   - GET `/export` - show export options
   - GET `/export/chart.png` - generate and return PNG
   - GET `/export/chart.pdf` - generate and return PDF
-- [ ] Style chart professionally:
+- [x] Style chart professionally:
   - Clean colors (not garish)
   - Clear fonts
   - Include title with year and date generated
@@ -624,7 +624,35 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Summary statistics included
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-03.** Implemented the full export functionality:
+>
+> **Service (`app/services/export.py`):**
+> - Three dataclasses: `ChartDataPoint`, `ExportSummary`, `ExportData` for structured data handling
+> - `get_export_data()` - Gathers cumulative monthly targets for all three plans plus actual hours billed
+> - `generate_chart()` - Creates matplotlib line chart with 4 lines (Firm=gray dashed, Optimistic=blue, Realistic=green, Actual=purple bold)
+> - `get_chart_as_base64()` - Returns chart as base64 for HTML embedding
+> - Helper functions: `get_cumulative_data_for_plan()`, `get_cumulative_actual_data()`, `calculate_pace_projection()`
+> - Uses Tailwind color palette for consistency: gray-500, blue-500, green-500, purple-500
+>
+> **Routes (`app/routes/export.py`):**
+> - `GET /export` - Shows export options page with chart preview and summary statistics
+> - `GET /export/chart.png` - Downloads PNG with filename `billable_hours_{year}_{date}.png`
+> - `GET /export/chart.pdf` - Downloads PDF with filename `billable_hours_{year}_{date}.pdf`
+>
+> **Template (`app/templates/export.html`):**
+> - Summary statistics grid (5 metrics: YTD Hours, Annual Target, Remaining, Pace Projection, Status)
+> - Chart preview embedded via base64 PNG
+> - Download buttons for PNG and PDF with icons
+> - Color-coded status (green for ahead/on track, amber for slightly behind, red for catch-up)
+>
+> **Integration:**
+> - Blueprint registered at `/export` in `app/__init__.py`
+> - Export link added to navigation in `base.html` between Catch-Up and Setup
+> - Added matplotlib>=3.8.0 to requirements.txt
+>
+> **Testing:**
+> - Created `tests/test_export.py` with 13 unit tests covering helper functions, core functions, and chart generation
+> - All 164 tests pass (151 existing + 13 new)
 
 ---
 

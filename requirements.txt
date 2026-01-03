@@ -13,3 +13,6 @@ python-dateutil>=2.8.0
 
 # Testing
 pytest>=8.0.0
+
+# Chart generation for exports
+matplotlib>=3.8.0

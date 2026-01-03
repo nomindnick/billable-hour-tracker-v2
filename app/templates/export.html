@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Export - Billable Hours Planner{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Export Progress Chart</h1>
+        <p class="mt-2 text-gray-600">
+            Download a professional chart showing your billing progress for presentations and firm meetings.
+        </p>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Summary Statistics</h2>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <p class="text-2xl font-bold text-gray-900">{{ "%.1f"|format(summary.ytd_hours) }}</p>
+                <p class="text-sm text-gray-500">YTD Hours</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <p class="text-2xl font-bold text-gray-900">{{ "{:,}".format(summary.annual_target) }}</p>
+                <p class="text-sm text-gray-500">Annual Target</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <p class="text-2xl font-bold text-gray-900">{{ "%.1f"|format(summary.hours_remaining) }}</p>
+                <p class="text-sm text-gray-500">Remaining</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <p class="text-2xl font-bold text-gray-900">{{ "{:,.0f}".format(summary.current_pace_projection) }}</p>
+                <p class="text-sm text-gray-500">Pace Projection</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <p class="text-2xl font-bold
+                    {% if summary.status == 'Ahead' %}text-green-600
+                    {% elif summary.status == 'On track' %}text-green-600
+                    {% elif summary.status == 'Slightly behind' %}text-amber-600
+                    {% else %}text-red-600{% endif %}">
+                    {{ summary.status }}
+                </p>
+                <p class="text-sm text-gray-500">Status</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Preview -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Chart Preview</h2>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <img src="data:image/png;base64,{{ chart_base64 }}"
+                 alt="Billable Hours Progress Chart"
+                 class="w-full h-auto">
+        </div>
+        <p class="mt-2 text-sm text-gray-500 text-center">
+            Generated on {{ summary.generated_date }}
+        </p>
+    </div>
+
+    <!-- Download Options -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Download Options</h2>
+        <div class="flex flex-col sm:flex-row gap-4">
+            <a href="{{ url_for('export.download_png') }}"
+               class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Download PNG
+            </a>
+            <a href="{{ url_for('export.download_pdf') }}"
+               class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Download PDF
+            </a>
+        </div>
+        <p class="mt-4 text-sm text-gray-500">
+            <strong>PNG:</strong> Best for presentations and sharing via email.
+            <strong>PDF:</strong> Best for printing and formal documents.
+        </p>
+    </div>
+
+    <!-- Back to Dashboard -->
+    <div class="text-center">
+        <a href="{{ url_for('dashboard.index') }}"
+           class="text-primary-600 hover:text-primary-800 font-medium">
+            &larr; Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

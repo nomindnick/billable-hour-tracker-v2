@@ -45,12 +45,14 @@ def create_app(config_name: str = 'default') -> Flask:
     from app.routes.entries import entries_bp
     from app.routes.views import views_bp
     from app.routes.catchup import catchup_bp
+    from app.routes.export import export_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(setup_bp, url_prefix='/setup')
     app.register_blueprint(entries_bp, url_prefix='/entries')
     app.register_blueprint(views_bp)  # No prefix - routes at /monthly, /history
     app.register_blueprint(catchup_bp, url_prefix='/catchup')
+    app.register_blueprint(export_bp, url_prefix='/export')
 
     # Register CLI commands
     register_commands(app)

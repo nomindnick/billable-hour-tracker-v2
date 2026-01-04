@@ -89,28 +89,33 @@ Verify every requirement in SPEC.md exists and works as specified.
 - `app/templates/setup/plans.html`
 
 **Review Checklist:**
-- [ ] **Firm Requirements Plan:** Fixed linear distribution (150 hours/month)
-- [ ] Firm Plan: Non-dynamically adjusted reference point
-- [ ] Firm Plan: Shows 450 hours/quarter
-- [ ] **Optimistic Plan:** User-defined aggressive goal
-- [ ] Optimistic Plan: Configurable target date (e.g., Thanksgiving)
-- [ ] Optimistic Plan: Creates maximum holiday flexibility
-- [ ] Optimistic Plan: Supports maintenance hours after target
-- [ ] **Realistic Plan:** Hits annual target by Dec 31
-- [ ] Realistic Plan: Accounts for billing intensity preferences
-- [ ] Realistic Plan: Allows lighter December
-- [ ] Realistic Plan: Intended as primary plan (emphasized in UI)
-- [ ] All three plans created during setup
+- [x] **Firm Requirements Plan:** Fixed linear distribution (150 hours/month)
+- [x] Firm Plan: Non-dynamically adjusted reference point
+- [x] Firm Plan: Shows 450 hours/quarter
+- [x] **Optimistic Plan:** User-defined aggressive goal
+- [x] Optimistic Plan: Configurable target date (e.g., Thanksgiving)
+- [x] Optimistic Plan: Creates maximum holiday flexibility
+- [x] Optimistic Plan: Supports maintenance hours after target
+- [x] **Realistic Plan:** Hits annual target by Dec 31
+- [x] Realistic Plan: Accounts for billing intensity preferences
+- [x] Realistic Plan: Allows lighter December
+- [x] Realistic Plan: Intended as primary plan (emphasized in UI)
+- [x] All three plans created during setup
 
 **Acceptance Criteria:**
 - Each plan type has distinct, correct behavior
 - Plan characteristics match spec exactly
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0 - All three plans correctly implemented
+- Fixes Applied: None needed
+- Remaining Concerns: None
+- Tests Added: None (existing coverage adequate)
+- Verification Notes:
+  - FIRM: Fixed 150/month in planner.py:293-299, read-only display in plans.html:72-93 with "450 hours/quarter"
+  - OPTIMISTIC: Configurable target date (default Nov 27) and maintenance hours in plans.html:95-143, calculation logic in planner.py:320-369
+  - REALISTIC: Full-year weighted distribution in planner.py:311-318, marked as primary with green color + "Primary" badge in dashboard.html:267-274, is_primary flag set in dashboard.py:307
+  - All three plans created during setup in setup.py:107-134
 
 ---
 
@@ -124,29 +129,37 @@ Verify every requirement in SPEC.md exists and works as specified.
 - `app/models.py` (MonthConfig, IntensityLevel)
 
 **Review Checklist:**
-- [ ] Distributes annual target across months
-- [ ] Considers available workdays (excludes weekends)
-- [ ] Excludes holidays from workday count
-- [ ] Excludes vacation days from workday count
-- [ ] Applies billing intensity settings correctly
-- [ ] **Intensity weights:** normal=1.0, light=0.75, very_light=0.5
-- [ ] Plan-specific timeline handling (Optimistic ends early)
-- [ ] **Daily targets stay near 7.5 hours**
-- [ ] **Daily targets NEVER exceed 9.5 hours**
-- [ ] Surfaces impossible configurations during setup
-- [ ] Returns PlanWarning when plan is infeasible
-- [ ] Warning includes month, required hours, and message
+- [x] Distributes annual target across months
+- [x] Considers available workdays (excludes weekends)
+- [x] Excludes holidays from workday count
+- [x] Excludes vacation days from workday count
+- [x] Applies billing intensity settings correctly
+- [x] **Intensity weights:** normal=1.0, light=0.75, very_light=0.5
+- [x] Plan-specific timeline handling (Optimistic ends early)
+- [x] **Daily targets stay near 7.5 hours**
+- [x] **Daily targets NEVER exceed 9.5 hours**
+- [x] Surfaces impossible configurations during setup
+- [x] Returns PlanWarning when plan is infeasible
+- [x] Warning includes month, required hours, and message
 
 **Acceptance Criteria:**
 - Algorithm produces correct monthly targets for all scenarios
 - 9.5-hour limit is strictly enforced
 - Impossible configurations are detected and surfaced
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0 - Algorithm correctly implemented
+- Fixes Applied: None needed
+- Remaining Concerns: None
+- Tests Added: None (existing coverage in test_planner.py adequate)
+- Verification Notes:
+  - Distribution: planner.py:194-244 uses proportional weighted distribution (workdays × intensity)
+  - Workdays: calendar_utils.py:21-57 excludes weekends (weekday() >= 5), holidays, vacation
+  - Intensity weights: planner.py:35-39 defines INTENSITY_WEIGHTS dict with exact values (1.0, 0.75, 0.5)
+  - 9.5 hour cap: planner.py:42 MAX_DAILY_HOURS = 9.5, enforced in validate_plan_feasibility()
+  - PlanWarning: planner.py:49-63 dataclass with month, required_daily_hours, workdays_in_month, message
+  - UI surfacing: setup.py:865-872 passes warnings to validation_warnings.html partial
+  - 7.5 hour reference: catchup.py:38 COMFORTABLE_TARGET = 7.5 used for color coding
 
 ---
 

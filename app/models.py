@@ -163,8 +163,10 @@ class Holiday(db.Model):
     year_config: Mapped["YearConfig"] = relationship(back_populates="holidays")
 
     # Index for efficient date lookups within a year
+    # Unique constraint prevents duplicate dates per year
     __table_args__ = (
         Index("ix_holiday_year_date", "year_config_id", "date"),
+        UniqueConstraint("year_config_id", "date", name="uq_holiday_year_date"),
     )
 
     def __repr__(self) -> str:
@@ -198,8 +200,10 @@ class VacationDay(db.Model):
     year_config: Mapped["YearConfig"] = relationship(back_populates="vacation_days")
 
     # Index for efficient date lookups within a year
+    # Unique constraint prevents duplicate dates per year
     __table_args__ = (
         Index("ix_vacation_day_year_date", "year_config_id", "date"),
+        UniqueConstraint("year_config_id", "date", name="uq_vacation_day_year_date"),
     )
 
     def __repr__(self) -> str:

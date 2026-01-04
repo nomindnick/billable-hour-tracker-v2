@@ -56,26 +56,26 @@ Verify every requirement in SPEC.md exists and works as specified.
 - `app/models.py` (Holiday, VacationDay models)
 
 **Review Checklist:**
-- [ ] Holidays can be manually entered
-- [ ] Holidays are firm-recognized non-billing days
-- [ ] Vacation days can be entered separately
-- [ ] "Add Common US Holidays" helper works correctly
-- [ ] All 11 standard US holidays are included
-- [ ] Dates are validated to be within configured year
-- [ ] Duplicate date prevention works
-- [ ] HTMX-powered add/remove without full page reload
-- [ ] Can remove holidays after adding
-- [ ] Can remove vacation days after adding
+- [x] Holidays can be manually entered
+- [x] Holidays are firm-recognized non-billing days
+- [x] Vacation days can be entered separately
+- [x] "Add Common US Holidays" helper works correctly
+- [x] All 11 standard US holidays are included
+- [x] Dates are validated to be within configured year
+- [x] Duplicate date prevention works
+- [x] HTMX-powered add/remove without full page reload
+- [x] Can remove holidays after adding
+- [x] Can remove vacation days after adding
 
 **Acceptance Criteria:**
 - All holiday/vacation features work as specified
 - Date validation prevents invalid entries
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 1 (missing database unique constraints on Holiday and VacationDay models)
+- Fixes Applied: Added UniqueConstraint to both models' __table_args__ for (year_config_id, date) in models.py
+- Remaining Concerns: None
+- Tests Added: None (existing app-level duplicate checks already test this behavior; DB constraint is defense-in-depth)
 
 ---
 

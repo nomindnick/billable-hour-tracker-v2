@@ -43,7 +43,7 @@ CATCH_UP_THRESHOLD = 15.0         # hours behind before catch-up is suggested
 STATUS_ON_TRACK = "On track"
 STATUS_AHEAD = "Ahead"
 STATUS_SLIGHTLY_BEHIND = "Slightly behind"
-STATUS_CATCH_UP_RECOMMENDED = "Consider a catch-up sprint"
+STATUS_CATCH_UP_RECOMMENDED = "Catch-up recommended"
 
 
 # -----------------------------------------------------------------------------

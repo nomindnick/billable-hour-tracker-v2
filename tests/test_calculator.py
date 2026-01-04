@@ -133,7 +133,7 @@ class TestConstants:
         assert STATUS_ON_TRACK == "On track"
         assert STATUS_AHEAD == "Ahead"
         assert STATUS_SLIGHTLY_BEHIND == "Slightly behind"
-        assert STATUS_CATCH_UP_RECOMMENDED == "Consider a catch-up sprint"
+        assert STATUS_CATCH_UP_RECOMMENDED == "Catch-up recommended"
 
 
 # -----------------------------------------------------------------------------

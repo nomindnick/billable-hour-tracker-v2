@@ -6,7 +6,7 @@ the application instance. Using the factory pattern allows for easy testing
 and multiple configurations.
 """
 
-from flask import Flask
+from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 
 from config import config
@@ -57,6 +57,9 @@ def create_app(config_name: str = 'default') -> Flask:
     # Register CLI commands
     register_commands(app)
 
+    # Register error handlers
+    register_error_handlers(app)
+
     return app
 
 
@@ -74,3 +77,26 @@ def register_commands(app: Flask) -> None:
         from app import models  # noqa: F401
         db.create_all()
         print('Database initialized successfully.')
+
+
+def register_error_handlers(app: Flask) -> None:
+    """
+    Register custom error handlers for the application.
+
+    These provide friendly error pages when things go wrong, maintaining
+    the app's supportive tone even when errors occur.
+
+    Args:
+        app: The Flask application instance
+    """
+    @app.errorhandler(404)
+    def not_found_error(error):
+        """Handle 404 Not Found errors with a friendly page."""
+        return render_template('404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        """Handle 500 Internal Server errors with a friendly page."""
+        # Roll back any failed database transaction
+        db.session.rollback()
+        return render_template('500.html'), 500

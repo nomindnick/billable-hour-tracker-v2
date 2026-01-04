@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2563eb">
     <title>{% block title %}Billable Hours Planner{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -36,6 +38,27 @@
         }
     </script>
 
+    <!-- HTMX loading indicator styles -->
+    <style>
+        /* Hide indicator by default, show during HTMX request */
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: inline-flex;
+        }
+        .htmx-request.htmx-indicator {
+            display: inline-flex;
+        }
+        /* Spinner animation */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -49,22 +72,22 @@
                     </a>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="/" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/" class="px-3 py-2 rounded-md text-sm font-medium transition-colors {% if request.path == '/' %}bg-primary-50 text-primary-700{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
                         Dashboard
                     </a>
-                    <a href="/monthly" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/monthly" class="px-3 py-2 rounded-md text-sm font-medium transition-colors {% if request.path.startswith('/monthly') %}bg-primary-50 text-primary-700{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
                         Monthly
                     </a>
-                    <a href="/history" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/history" class="px-3 py-2 rounded-md text-sm font-medium transition-colors {% if request.path == '/history' %}bg-primary-50 text-primary-700{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
                         History
                     </a>
-                    <a href="/catchup/new" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/catchup/new" class="px-3 py-2 rounded-md text-sm font-medium transition-colors {% if request.path.startswith('/catchup') %}bg-primary-50 text-primary-700{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
                         Catch-Up
                     </a>
-                    <a href="/export" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/export" class="px-3 py-2 rounded-md text-sm font-medium transition-colors {% if request.path.startswith('/export') %}bg-primary-50 text-primary-700{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
                         Export
                     </a>
-                    <a href="/setup" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                    <a href="/setup" class="px-3 py-2 rounded-md text-sm font-medium transition-colors {% if request.path.startswith('/setup') %}bg-primary-50 text-primary-700{% else %}text-gray-600 hover:text-gray-900 hover:bg-gray-50{% endif %}">
                         Setup
                     </a>
                 </div>

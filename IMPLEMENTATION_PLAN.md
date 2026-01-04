@@ -711,21 +711,21 @@ This implementation follows a progressive approach: establish the foundation, bu
 **Objective:** Refine the user experience and add proper error handling.
 
 **Tasks:**
-- [ ] Review all user-facing messages for supportive tone:
+- [x] Review all user-facing messages for supportive tone:
   - Change any negative framing to constructive
   - Add encouraging messages for positive performance
   - Ensure "behind" messaging suggests solutions, not just problems
-- [ ] Add proper error handling:
+- [x] Add proper error handling:
   - Database errors
   - Invalid inputs
   - Edge cases (no data yet, etc.)
-- [ ] Add loading states for HTMX interactions
-- [ ] Add keyboard shortcuts:
+- [x] Add loading states for HTMX interactions
+- [x] Add keyboard shortcuts:
   - Quick entry from dashboard (press 'e' to focus entry field)
-  - Navigation shortcuts
-- [ ] Test responsive design for different screen sizes
-- [ ] Add favicon and polish base template
-- [ ] Review and improve color scheme and typography
+  - Navigation shortcuts (skipped per user preference)
+- [x] Test responsive design for different screen sizes
+- [x] Add favicon and polish base template
+- [x] Review and improve color scheme and typography
 
 **Acceptance Criteria:**
 - All messaging is supportive and constructive
@@ -734,7 +734,30 @@ This implementation follows a progressive approach: establish the foundation, bu
 - Works well on laptop screens (primary use case)
 
 **Sprint Update:**
-> _[To be completed by Claude Code]_
+> **Completed 2026-01-03.** Implemented comprehensive UX polish and error handling:
+>
+> **Error Handling:**
+> - Added global 404/500 error handlers in `app/__init__.py` with friendly templates
+> - Created `404.html` and `500.html` error pages with navigation back to dashboard
+> - Wrapped all `db.session.commit()` calls in try/except blocks with rollback (12 in routes/setup.py, 2 in routes/entries.py, 3 in routes/catchup.py, 1 in routes/dashboard.py)
+> - HTMX error responses use HX-Trigger headers for showError events
+>
+> **Loading States:**
+> - Added HTMX indicator CSS to base.html (`.htmx-indicator` and `.htmx-request` styles)
+> - Added spinner to dashboard quick entry form
+> - Added loading overlay to catch-up sprint preview section
+>
+> **Messaging:**
+> - Changed "Catch-up recommended" to softer "Consider a catch-up sprint"
+> - Reviewed all messaging - already supportive throughout
+>
+> **UI Polish:**
+> - Created green checkmark `favicon.svg` in `app/static/`
+> - Added favicon link and `theme-color` meta tag to base.html
+> - Added active nav state highlighting using Jinja2 `request.path` checks
+> - Added mobile responsiveness to monthly calendar (overflow-x-auto, responsive cell sizes)
+>
+> **Tests:** All 177 tests pass
 
 ---
 

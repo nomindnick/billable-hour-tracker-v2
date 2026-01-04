@@ -94,22 +94,23 @@
     </div>
 
     <!-- Calendar Grid -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <!-- Day of Week Headers -->
-        <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
-            {% for day_name in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] %}
-            <div class="px-2 py-3 text-center text-sm font-semibold text-gray-700">
-                {{ day_name }}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
+        <div class="min-w-[600px]">
+            <!-- Day of Week Headers -->
+            <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+                {% for day_name in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] %}
+                <div class="px-1 md:px-2 py-2 md:py-3 text-center text-xs md:text-sm font-semibold text-gray-700">
+                    {{ day_name }}
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
 
         <!-- Calendar Weeks -->
         {% for week in calendar_weeks %}
         <div class="grid grid-cols-7 border-b border-gray-100 last:border-b-0">
             {% for day in week %}
             {% if day %}
-            <div class="min-h-[100px] p-2 border-r border-gray-100 last:border-r-0 {{ day.colors.bg }} {{ day.colors.border }}
+            <div class="min-h-[80px] md:min-h-[100px] p-1 md:p-2 border-r border-gray-100 last:border-r-0 {{ day.colors.bg }} {{ day.colors.border }}
                         {% if day.is_today %}ring-2 ring-primary-500 ring-inset{% endif %}">
                 <!-- Day Number -->
                 <div class="flex items-center justify-between mb-1">
@@ -157,11 +158,12 @@
             </div>
             {% else %}
             <!-- Empty cell (outside month) -->
-            <div class="min-h-[100px] p-2 border-r border-gray-100 last:border-r-0 bg-gray-25"></div>
+            <div class="min-h-[80px] md:min-h-[100px] p-1 md:p-2 border-r border-gray-100 last:border-r-0 bg-gray-25"></div>
             {% endif %}
             {% endfor %}
         </div>
         {% endfor %}
+        </div>
     </div>
 
     <!-- Legend -->

@@ -330,13 +330,17 @@ def index():
 
         # Auto-complete if target achieved
         if sprint_progress.is_completed:
-            mark_sprint_completed(active_sprint)
-            flash(
-                f"Sprint complete! You hit your target of {active_sprint.target_hours:.1f} hours!",
-                "success"
-            )
-            active_sprint = None
-            sprint_progress = None
+            try:
+                mark_sprint_completed(active_sprint)
+                flash(
+                    f"Sprint complete! You hit your target of {active_sprint.target_hours:.1f} hours!",
+                    "success"
+                )
+                active_sprint = None
+                sprint_progress = None
+            except Exception:
+                db.session.rollback()
+                # Continue showing the page even if auto-complete fails
 
     # Get chart data
     chart_data = get_chart_data(year_config, today)

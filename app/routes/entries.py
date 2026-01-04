@@ -234,7 +234,14 @@ def create_entry():
         )
         db.session.add(entry)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        if request.headers.get('HX-Request'):
+            return '<div class="text-red-600 p-4">Something went wrong saving your entry. Please try again.</div>', 500
+        flash('Something went wrong saving your entry. Please try again.', 'error')
+        return redirect(url_for('dashboard.index'))
 
     # Generate feedback
     feedback = get_entry_feedback(year_config, entry_date, hours)
@@ -311,7 +318,14 @@ def update_entry(entry_id: int):
 
     # Update the entry
     entry.hours_billed = hours
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        if request.headers.get('HX-Request'):
+            return '<div class="text-red-600 p-4">Something went wrong updating your entry. Please try again.</div>', 500
+        flash('Something went wrong updating your entry. Please try again.', 'error')
+        return redirect(url_for('dashboard.index'))
 
     # Get target for this entry's date
     realistic_plan = next(

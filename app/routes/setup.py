@@ -129,7 +129,12 @@ def save_year():
 
         flash(f'Created new configuration for {year}.', 'success')
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash('Something went wrong saving your configuration. Please try again.', 'error')
+        return redirect(url_for('setup.index'))
 
     # Redirect to the mid-year start step
     return redirect(url_for('setup.midyear'))
@@ -243,7 +248,12 @@ def save_midyear():
                 )
                 db.session.add(hist_month)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash('Something went wrong saving your historical hours. Please try again.', 'error')
+        return redirect(url_for('setup.midyear'))
     flash('Historical hours saved.', 'success')
     return redirect(url_for('setup.holidays'))
 
@@ -415,7 +425,15 @@ def add_holiday():
         name=name
     )
     db.session.add(holiday)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        response = make_response('', 500)
+        response.headers['HX-Trigger'] = json.dumps({
+            'showError': 'Something went wrong. Please try again.'
+        })
+        return response
 
     # Return the partial HTML for the new item
     return render_template('setup/partials/holiday_item.html', holiday=holiday)
@@ -430,7 +448,11 @@ def delete_holiday(holiday_id: int):
     """
     holiday = Holiday.query.get_or_404(holiday_id)
     db.session.delete(holiday)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return '<div class="text-red-600 text-sm">Failed to delete. Please try again.</div>', 500
 
     # Return empty string - HTMX will remove the element
     return ''
@@ -485,7 +507,15 @@ def add_common_holidays():
             )
             db.session.add(holiday)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        response = make_response('', 500)
+        response.headers['HX-Trigger'] = json.dumps({
+            'showError': 'Something went wrong adding holidays. Please try again.'
+        })
+        return response
 
     # Get all holidays for this year, ordered by date
     holidays_list = Holiday.query.filter_by(
@@ -642,7 +672,15 @@ def add_vacation():
         note=note
     )
     db.session.add(vacation)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        response = make_response('', 500)
+        response.headers['HX-Trigger'] = json.dumps({
+            'showError': 'Something went wrong. Please try again.'
+        })
+        return response
 
     # Return the partial HTML for the new item
     return render_template('setup/partials/vacation_item.html', vacation=vacation)
@@ -657,7 +695,11 @@ def delete_vacation(vacation_id: int):
     """
     vacation = VacationDay.query.get_or_404(vacation_id)
     db.session.delete(vacation)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return '<div class="text-red-600 text-sm">Failed to delete. Please try again.</div>', 500
 
     # Return empty string - HTMX will remove the element
     return ''
@@ -883,7 +925,12 @@ def save_plans():
         if month_config and intensity_str in ('normal', 'light', 'very_light'):
             month_config.intensity = IntensityLevel(intensity_str)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash('Something went wrong saving your plans. Please try again.', 'error')
+        return redirect(url_for('setup.plans'))
     flash('Plans configured successfully!', 'success')
     return redirect(url_for('setup.complete'))
 
@@ -930,7 +977,15 @@ def update_intensity(month: int):
 
     if month_config:
         month_config.intensity = IntensityLevel(intensity_str)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            response = make_response('', 500)
+            response.headers['HX-Trigger'] = json.dumps({
+                'showError': 'Something went wrong. Please try again.'
+            })
+            return response
 
     # Return updated warnings
     warnings = get_all_plan_warnings(year_config)
@@ -976,7 +1031,15 @@ def apply_intensity_preset():
             else:
                 month_config.intensity = IntensityLevel.NORMAL
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        response = make_response('', 500)
+        response.headers['HX-Trigger'] = json.dumps({
+            'showError': 'Something went wrong. Please try again.'
+        })
+        return response
 
     # Get sorted month configs and warnings for the response
     month_configs = sorted(year_config.month_configs, key=lambda m: m.month)

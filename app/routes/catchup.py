@@ -9,6 +9,7 @@ import datetime
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
+from app import db
 from app.models import CatchUpSprint, PlanType, SprintStatus, YearConfig
 from app.services.catchup import (
     calculate_sprint_preview,
@@ -222,6 +223,10 @@ def create_sprint():
     except ValueError as e:
         flash(str(e), "error")
         return redirect(url_for('catchup.new_sprint'))
+    except Exception:
+        db.session.rollback()
+        flash("Something went wrong creating your sprint. Please try again.", "error")
+        return redirect(url_for('catchup.new_sprint'))
 
 
 @catchup_bp.route('/<int:sprint_id>/dismiss', methods=['POST'])
@@ -250,7 +255,12 @@ def dismiss_sprint(sprint_id):
         return redirect(url_for('dashboard.index'))
 
     # Mark as dismissed
-    mark_sprint_dismissed(sprint)
+    try:
+        mark_sprint_dismissed(sprint)
+    except Exception:
+        db.session.rollback()
+        flash("Something went wrong dismissing your sprint. Please try again.", "error")
+        return redirect(url_for('dashboard.index'))
 
     flash(
         "Sprint dismissed. You can start a new one whenever you're ready.",
@@ -285,7 +295,12 @@ def complete_sprint(sprint_id):
         return redirect(url_for('dashboard.index'))
 
     # Mark as completed
-    mark_sprint_completed(sprint)
+    try:
+        mark_sprint_completed(sprint)
+    except Exception:
+        db.session.rollback()
+        flash("Something went wrong completing your sprint. Please try again.", "error")
+        return redirect(url_for('dashboard.index'))
 
     flash(
         "Sprint completed! Great work on hitting your target!",

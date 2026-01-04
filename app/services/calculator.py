@@ -37,13 +37,13 @@ from app.services.planner import (
 # Thresholds for determining plan status
 # Users within this range of "behind" are still considered on track
 SLIGHTLY_BEHIND_THRESHOLD = 5.0   # hours behind before "slightly behind" status
-CATCH_UP_THRESHOLD = 15.0         # hours behind before "catch-up recommended"
+CATCH_UP_THRESHOLD = 15.0         # hours behind before catch-up is suggested
 
 # Status labels for display
 STATUS_ON_TRACK = "On track"
 STATUS_AHEAD = "Ahead"
 STATUS_SLIGHTLY_BEHIND = "Slightly behind"
-STATUS_CATCH_UP_RECOMMENDED = "Catch-up recommended"
+STATUS_CATCH_UP_RECOMMENDED = "Consider a catch-up sprint"
 
 
 # -----------------------------------------------------------------------------

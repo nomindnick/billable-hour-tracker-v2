@@ -10,6 +10,7 @@ from typing import Optional
 
 from flask import Blueprint, flash, redirect, render_template, url_for
 
+from app import db
 from app.models import CatchUpSprint, PlanConfig, PlanType, SprintStatus, YearConfig
 from app.services.calculator import (
     DailyTargetResult,

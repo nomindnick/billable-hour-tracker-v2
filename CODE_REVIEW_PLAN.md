@@ -172,26 +172,32 @@ Verify every requirement in SPEC.md exists and works as specified.
 - `app/routes/dashboard.py`
 
 **Review Checklist:**
-- [ ] Start of month: daily target = monthly target ÷ remaining workdays
-- [ ] Recalculates after each day entry
-- [ ] Shortfalls distribute across remaining days
-- [ ] Excess hours banked as "ahead"
-- [ ] Banked hours don't reset daily targets (spec requirement)
-- [ ] **Hard cap at 9.5 hours/day**
-- [ ] Suggests catch-up sprint when cap exceeded
-- [ ] Remaining workdays calculation is accurate
-- [ ] Weekend days excluded from remaining workdays
-- [ ] Holidays excluded from remaining workdays
+- [x] Start of month: daily target = monthly target ÷ remaining workdays
+- [x] Recalculates after each day entry
+- [x] Shortfalls distribute across remaining days
+- [x] Excess hours banked as "ahead"
+- [x] Banked hours don't reset daily targets (spec requirement)
+- [x] **Hard cap at 9.5 hours/day**
+- [x] Suggests catch-up sprint when cap exceeded
+- [x] Remaining workdays calculation is accurate
+- [x] Weekend days excluded from remaining workdays
+- [x] Holidays excluded from remaining workdays
 
 **Acceptance Criteria:**
 - Daily targets recalculate correctly in real-time
 - 9.5-hour cap is enforced with appropriate suggestions
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
+**Sprint Findings:**
+- Issues Found: 2
+  1. **BUG (High):** Missing `db` import in dashboard.py:342 - would cause crash on auto-complete error path
+  2. **SPEC DEVIATION (Medium):** Daily targets decreased when ahead, but spec says they should stay at original pace to "encourage continued strong performance rather than coasting"
 - Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+  1. Added `from app import db` import to dashboard.py (line 13)
+  2. Updated `calculate_daily_target()` in calculator.py (lines 312-428) to use "on-track" target when ahead, "current" target when behind
+- Remaining Concerns: None
+- Tests Added: 2 new tests in test_calculator.py
+  1. `test_ahead_daily_target_stays_at_original_pace` - verifies daily target doesn't drop when ahead
+  2. `test_behind_daily_target_increases` - verifies daily target increases to distribute shortfall
 
 ---
 

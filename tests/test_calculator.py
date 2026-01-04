@@ -482,6 +482,99 @@ class TestCalculateDailyTarget:
             # This test checks a weekend day
             assert result.remaining_workdays >= 0
 
+    def test_ahead_daily_target_stays_at_original_pace(self, app):
+        """When ahead, daily target should stay at original pace, not decrease.
+
+        Per spec (SPEC.md line 308): "Banked hours...don't change the daily
+        targets—this encourages continued strong performance rather than coasting."
+
+        If user bills significantly more than target, the next day's target
+        should stay at the original pace (~6.5 hours), not decrease to a
+        lower value.
+        """
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+
+            # January 2025 has 23 workdays (Jan 1 is Wed)
+            # Firm plan = 150 hours/month
+            # On-track target = 150 / 23 = ~6.52 hours/day
+
+            # Add entries for first 5 days at 10 hours each (50 hours total)
+            # This puts us significantly ahead of the ~32.6 hours we'd need
+            # to be on track for the first 5 workdays
+            for day in [2, 3, 6, 7, 8]:  # First 5 workdays in Jan 2025
+                entry = DailyEntry(
+                    year_config_id=year_config.id,
+                    date=datetime.date(2025, 1, day),
+                    hours_billed=10.0
+                )
+                db.session.add(entry)
+            db.session.commit()
+            db.session.refresh(year_config)
+
+            # Now check target for Jan 9 (6th workday)
+            # With 50 hours billed, we need only 100 more over 18 days = ~5.56/day
+            # But per spec, daily target should NOT drop below on_track (~6.52)
+            result = calculate_daily_target(
+                year_config, plan, datetime.date(2025, 1, 9)
+            )
+
+            # The on-track target is 150 / 23 = ~6.52
+            # Even though we only need 100/18 = 5.56/day now,
+            # the target should stay at the on-track pace to encourage
+            # continued strong performance
+            on_track_target = 150.0 / 23  # ~6.52
+            assert result.daily_target >= on_track_target - 0.01
+
+    def test_behind_daily_target_increases(self, app):
+        """When behind, daily target should increase to distribute shortfall."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+
+            # Get the initial daily target at start of January
+            initial_result = calculate_daily_target(
+                year_config, plan, datetime.date(2025, 1, 2)
+            )
+            initial_target = initial_result.daily_target
+
+            # Now add a low-billing day (3 hours on Jan 2, way below target)
+            entry = DailyEntry(
+                year_config_id=year_config.id,
+                date=datetime.date(2025, 1, 2),
+                hours_billed=3.0
+            )
+            db.session.add(entry)
+            db.session.commit()
+            db.session.refresh(year_config)
+
+            # Get the next day's target (Jan 3)
+            next_day_result = calculate_daily_target(
+                year_config, plan, datetime.date(2025, 1, 3)
+            )
+
+            # The target should increase to compensate for the shortfall
+            assert next_day_result.daily_target > initial_target
+
 
 # -----------------------------------------------------------------------------
 # Test: calculate_plan_status

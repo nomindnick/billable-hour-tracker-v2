@@ -319,9 +319,14 @@ def calculate_daily_target(
 
     The algorithm:
     1. Gets the monthly target for the current month
-    2. Subtracts hours already billed this month
-    3. Divides remaining hours by remaining workdays
-    4. Caps the result at 9.5 hours (MAX_DAILY_HOURS)
+    2. Calculates "on-track" target (month target / total workdays in month)
+    3. Calculates "current" target (remaining hours / remaining workdays)
+    4. When ahead: uses on-track target (encourages sustained performance)
+    5. When behind: uses current target (distributes shortfall)
+    6. Caps the result at 9.5 hours (MAX_DAILY_HOURS)
+
+    Per spec: "Banked hours...don't change the daily targets—this encourages
+    continued strong performance rather than coasting."
 
     If the uncapped target exceeds 9.5 hours, catch_up_recommended is set
     to True, indicating the user should consider a catch-up sprint.
@@ -383,8 +388,31 @@ def calculate_daily_target(
             remaining_workdays=0
         )
 
-    # Calculate raw daily target
-    raw_target = remaining_hours / remaining_workday_count
+    # Calculate "on-track" target (original pace for the month)
+    # This is what target would be if billing exactly on pace
+    total_workdays = get_workdays_in_month(
+        target_date.year,
+        target_date.month,
+        holidays,
+        vacation_days
+    )
+    if len(total_workdays) > 0:
+        on_track_target = month_target / len(total_workdays)
+    else:
+        on_track_target = 0.0
+
+    # Calculate "current" target (based on remaining work)
+    current_target = remaining_hours / remaining_workday_count
+
+    # Choose target based on whether ahead or behind
+    # Per spec: when ahead, daily targets stay the same (original pace)
+    # This encourages continued strong performance rather than coasting
+    if current_target <= on_track_target:
+        # Ahead of schedule: use original pace
+        raw_target = on_track_target
+    else:
+        # Behind schedule: use higher current target (distribute shortfall)
+        raw_target = current_target
 
     # Check if catch-up is needed (would require more than max hours/day)
     catch_up_recommended = raw_target > MAX_DAILY_HOURS

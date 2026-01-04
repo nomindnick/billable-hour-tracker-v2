@@ -72,6 +72,12 @@ def save_year():
         flash('Please select a year.', 'error')
         return redirect(url_for('setup.index'))
 
+    # Validate year is within ±1 year of current year
+    current_year = datetime.date.today().year
+    if year < current_year - 1 or year > current_year + 1:
+        flash('Year must be within one year of the current year.', 'error')
+        return redirect(url_for('setup.index'))
+
     if not annual_target or annual_target < 1000 or annual_target > 3000:
         flash('Annual target must be between 1,000 and 3,000 hours.', 'error')
         return redirect(url_for('setup.index'))

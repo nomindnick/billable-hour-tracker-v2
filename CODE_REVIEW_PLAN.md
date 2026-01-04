@@ -25,23 +25,23 @@ Verify every requirement in SPEC.md exists and works as specified.
 - `app/models.py` (YearConfig model)
 
 **Review Checklist:**
-- [ ] Annual target is adjustable (default 1,800 hours)
-- [ ] Year selection allows calendar year input
-- [ ] Year range is reasonable (±1 year from current as per implementation)
-- [ ] Annual target has valid range (1000-3000 as implemented)
-- [ ] YearConfig model stores all required fields
-- [ ] Setup wizard creates YearConfig correctly
-- [ ] Redirects to next step (holidays) after year selection
+- [x] Annual target is adjustable (default 1,800 hours)
+- [x] Year selection allows calendar year input
+- [x] Year range is reasonable (±1 year from current as per implementation)
+- [x] Annual target has valid range (1000-3000 as implemented)
+- [x] YearConfig model stores all required fields
+- [x] Setup wizard creates YearConfig correctly
+- [x] Redirects to next step (midyear/historical) after year selection
 
 **Acceptance Criteria:**
 - All year setup requirements from spec are verified working
 - No deviations from spec without documented justification
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 3 (missing server-side year validation, progress indicator mismatch across 4 templates, button text mismatch)
+- Fixes Applied: Server-side year range validation added to setup.py; progress indicators updated to 5 steps (Year → Historical → Holidays → Vacation → Plans) in year.html, holidays.html, vacation.html, plans.html; button text in year.html changed to "Next: Historical Hours"
+- Remaining Concerns: None
+- Tests Added: None (manual verification sufficient for UI fixes; validation logic straightforward)
 
 ---
 

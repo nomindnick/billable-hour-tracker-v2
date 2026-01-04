@@ -95,10 +95,12 @@ class YearConfig(db.Model):
     annual_target: Mapped[int] = mapped_column(default=1800)
     start_date: Mapped[Optional[datetime.date]] = mapped_column(nullable=True)
     hours_pre_start: Mapped[Optional[float]] = mapped_column(nullable=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.utcnow)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        default=lambda: datetime.datetime.now(datetime.UTC)
+    )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow
+        default=lambda: datetime.datetime.now(datetime.UTC),
+        onupdate=lambda: datetime.datetime.now(datetime.UTC)
     )
 
     # Relationships to child tables (cascade delete when year is deleted)
@@ -355,10 +357,12 @@ class DailyEntry(db.Model):
     )
     date: Mapped[datetime.date] = mapped_column(nullable=False)
     hours_billed: Mapped[float] = mapped_column(nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.utcnow)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        default=lambda: datetime.datetime.now(datetime.UTC)
+    )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow
+        default=lambda: datetime.datetime.now(datetime.UTC),
+        onupdate=lambda: datetime.datetime.now(datetime.UTC)
     )
 
     # Relationship back to parent
@@ -416,7 +420,9 @@ class CatchUpSprint(db.Model):
         Enum(SprintStatus),
         default=SprintStatus.ACTIVE
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.utcnow)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        default=lambda: datetime.datetime.now(datetime.UTC)
+    )
     completed_at: Mapped[Optional[datetime.datetime]] = mapped_column(nullable=True)
 
     # Relationship back to parent

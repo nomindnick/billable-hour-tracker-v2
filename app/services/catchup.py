@@ -379,7 +379,7 @@ def create_catch_up_sprint(
 
     if existing_active:
         existing_active.status = SprintStatus.REVISED
-        existing_active.completed_at = datetime.datetime.utcnow()
+        existing_active.completed_at = datetime.datetime.now(datetime.UTC)
 
     # Create the new sprint
     sprint = CatchUpSprint(
@@ -665,7 +665,7 @@ def mark_sprint_completed(sprint: CatchUpSprint) -> None:
         sprint: The sprint to mark as completed
     """
     sprint.status = SprintStatus.COMPLETED
-    sprint.completed_at = datetime.datetime.utcnow()
+    sprint.completed_at = datetime.datetime.now(datetime.UTC)
     db.session.commit()
 
 
@@ -677,5 +677,5 @@ def mark_sprint_dismissed(sprint: CatchUpSprint) -> None:
         sprint: The sprint to dismiss
     """
     sprint.status = SprintStatus.DISMISSED
-    sprint.completed_at = datetime.datetime.utcnow()
+    sprint.completed_at = datetime.datetime.now(datetime.UTC)
     db.session.commit()

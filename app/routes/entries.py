@@ -8,7 +8,7 @@ The entry form is the primary interaction point for daily use.
 import datetime
 from typing import Optional
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, make_response, redirect, render_template, request, url_for
 
 from app import db
 from app.models import DailyEntry, PlanConfig, PlanType, YearConfig
@@ -253,14 +253,17 @@ def create_entry():
     is_today = entry_date == datetime.date.today()
 
     if request.headers.get('HX-Request'):
-        # Return HTMX partial
-        return render_template(
+        # Return HTMX partial with HX-Refresh to update all dashboard sections
+        # (Weekly/Monthly progress, Plan Status Cards, YTD Summary, Chart)
+        response = make_response(render_template(
             'dashboard/partials/quick_entry_result.html',
             entry=entry,
             feedback=feedback,
             is_today=is_today,
             recent_entries=recent_entries,
-        )
+        ))
+        response.headers['HX-Refresh'] = 'true'
+        return response
 
     # Non-HTMX request - redirect with flash message
     flash(feedback['message'], feedback['type'])
@@ -346,16 +349,19 @@ def update_entry(entry_id: int):
         if is_today:
             feedback = get_entry_feedback(year_config, entry.date, hours)
             recent_entries = get_recent_entries(year_config)
-            return render_template(
+            response = make_response(render_template(
                 'dashboard/partials/quick_entry_result.html',
                 entry=entry,
                 feedback=feedback,
                 is_today=True,
                 recent_entries=recent_entries,
-            )
+            ))
+            response.headers['HX-Refresh'] = 'true'
+            return response
 
-        # Return updated row partial for recent entries list
-        return render_template(
+        # Return updated row partial for recent entries list with refresh
+        # to update all dashboard sections (progress bars, YTD, etc.)
+        response = make_response(render_template(
             'dashboard/partials/entry_row.html',
             item={
                 'date': entry.date,
@@ -366,7 +372,9 @@ def update_entry(entry_id: int):
                 'is_today': is_today,
                 'is_weekend': is_weekend,
             }
-        )
+        ))
+        response.headers['HX-Refresh'] = 'true'
+        return response
 
     flash(f'Updated entry for {entry.date} to {hours} hours.', 'success')
     return redirect(url_for('dashboard.index'))

@@ -7,7 +7,7 @@ Tests the catch-up sprint calculation and creation logic in app/services/catchup
 import datetime
 import pytest
 
-from app import create_app, db
+from app import db
 from app.models import (
     CatchUpSprint,
     DailyEntry,
@@ -42,16 +42,6 @@ from app.services.catchup import (
 # -----------------------------------------------------------------------------
 # Fixtures
 # -----------------------------------------------------------------------------
-
-@pytest.fixture
-def app():
-    """Create a Flask application configured for testing."""
-    app = create_app("testing")
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.drop_all()
-
 
 @pytest.fixture
 def basic_year_config(app):

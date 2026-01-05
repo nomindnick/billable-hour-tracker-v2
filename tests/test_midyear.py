@@ -9,7 +9,7 @@ import datetime
 
 import pytest
 
-from app import create_app, db
+from app import db
 from app.models import (
     DailyEntry,
     HistoricalMonth,
@@ -26,21 +26,6 @@ from app.services.calculator import (
     calculate_plan_status,
 )
 from app.services.planner import calculate_monthly_targets_for_plan
-
-
-# -----------------------------------------------------------------------------
-# Fixtures
-# -----------------------------------------------------------------------------
-
-@pytest.fixture
-def app():
-    """Create a Flask app configured for testing."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
 
 
 # -----------------------------------------------------------------------------

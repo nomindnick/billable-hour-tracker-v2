@@ -7,7 +7,7 @@ Tests the daily target calculation logic in app/services/calculator.py.
 import datetime
 import pytest
 
-from app import create_app, db
+from app import db
 from app.models import (
     DailyEntry,
     IntensityLevel,
@@ -37,16 +37,6 @@ from app.services.calculator import (
 # -----------------------------------------------------------------------------
 # Fixtures
 # -----------------------------------------------------------------------------
-
-@pytest.fixture
-def app():
-    """Create a Flask application configured for testing."""
-    app = create_app("testing")
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.drop_all()
-
 
 @pytest.fixture
 def basic_year_config(app):

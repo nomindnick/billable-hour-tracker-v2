@@ -8,7 +8,7 @@ import datetime
 
 import pytest
 
-from app import create_app, db
+from app import db
 from app.models import (
     DailyEntry,
     HistoricalMonth,
@@ -34,17 +34,6 @@ from app.services.export import (
 # -----------------------------------------------------------------------------
 # Test Fixtures
 # -----------------------------------------------------------------------------
-
-@pytest.fixture
-def app():
-    """Create a test application instance."""
-    app = create_app('testing')
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-
 
 @pytest.fixture
 def year_config(app):

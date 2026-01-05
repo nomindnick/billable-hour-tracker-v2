@@ -318,34 +318,49 @@ Verify every requirement in SPEC.md exists and works as specified.
 
 **Review Checklist:**
 **Plan Adjustment:**
-- [ ] Can adjust Optimistic plan's goal mid-year
-- [ ] Can add/remove holidays mid-year
-- [ ] Can add/remove vacation days mid-year
-- [ ] Can change billing intensity for upcoming months
-- [ ] Can adjust annual target
-- [ ] Changes affect future calculations only
-- [ ] Historical data remains intact
+- [x] Can adjust Optimistic plan's goal mid-year
+- [x] Can add/remove holidays mid-year
+- [x] Can add/remove vacation days mid-year
+- [x] Can change billing intensity for upcoming months
+- [x] Can adjust annual target
+- [x] Changes affect future calculations only
+- [x] Historical data remains intact
 
 **Export Function:**
-- [ ] Line chart shows all three plans' expected trajectory
-- [ ] Actual hours billed overlaid on chart
-- [ ] Chart shows cumulative hours by month
-- [ ] Summary statistics: YTD total
-- [ ] Summary statistics: Current pace
-- [ ] Summary statistics: Projected year-end
-- [ ] PDF download option works
-- [ ] PNG download option works
-- [ ] Files named correctly: billable_hours_{year}_{date}.png/pdf
+- [x] Line chart shows all three plans' expected trajectory
+- [x] Actual hours billed overlaid on chart
+- [x] Chart shows cumulative hours by month
+- [x] Summary statistics: YTD total
+- [x] Summary statistics: Current pace
+- [x] Summary statistics: Projected year-end
+- [x] PDF download option works
+- [x] PNG download option works
+- [x] Files named correctly: billable_hours_{year}_{date}.png/pdf
 
 **Acceptance Criteria:**
 - Mid-year adjustments work without affecting history
 - Export produces accurate, professional charts
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0 - All features correctly implemented
+- Fixes Applied: None needed
+- Remaining Concerns: None
+- Tests Added: None (existing coverage in test_export.py adequate with 13 tests)
+- Verification Notes:
+  - **Plan Adjustment:** Users can access /setup at any time via navigation to modify:
+    - Annual target: setup.py:88-91 updates existing YearConfig
+    - Optimistic plan target date/maintenance hours: setup.py:893-922
+    - Holidays: setup.py:369-464 (add/delete via HTMX)
+    - Vacation: setup.py:616-711 (add/delete via HTMX)
+    - Intensity: setup.py:944-998 (individual) and setup.py:1001-1059 (presets)
+  - **Historical Data Preservation:** DailyEntry records are never modified when settings change; only settings tables are updated
+  - **Export Features:** export.py implements:
+    - Line chart with all three plans (lines 324-350)
+    - Actual hours overlay (lines 353-361)
+    - Cumulative monthly data (get_cumulative_data_for_plan, get_cumulative_actual_data)
+    - Summary statistics (ExportSummary dataclass lines 77-96)
+    - PNG/PDF generation via matplotlib (generate_chart function)
+    - File naming: `billable_hours_{year}_{YYYYMMDD}.{ext}` (routes/export.py:83, 115)
 
 ---
 
@@ -360,25 +375,36 @@ Verify every requirement in SPEC.md exists and works as specified.
 - `app/services/calculator.py` (historical hours handling)
 
 **Review Checklist:**
-- [ ] Can enter hours already billed (lump sum)
-- [ ] Can enter hours by month (detailed breakdown)
-- [ ] App calculates plans forward from current date
-- [ ] Months before start_date get 0 hours allocation
-- [ ] Historical hours included in YTD totals
-- [ ] Historical hours included in plan status calculations
-- [ ] All features work normally from start date forward
-- [ ] Dashboard reflects correct totals with historical data
-- [ ] Export includes historical data correctly
+- [x] Can enter hours already billed (lump sum)
+- [x] Can enter hours by month (detailed breakdown)
+- [x] App calculates plans forward from current date
+- [x] Months before start_date get 0 hours allocation
+- [x] Historical hours included in YTD totals
+- [x] Historical hours included in plan status calculations
+- [x] All features work normally from start date forward
+- [x] Dashboard reflects correct totals with historical data
+- [x] Export includes historical data correctly
 
 **Acceptance Criteria:**
 - Mid-year start produces correct calculations
 - User can start using app at any point in the year
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
+**Sprint Findings:**
+- Issues Found: 1 (BUG - Export chart's actual line did NOT include historical hours)
 - Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+  1. Modified `get_cumulative_actual_data()` in export.py to start cumulative sum with `get_historical_hours(year_config)` instead of 0.0
+  2. Added import for `get_historical_hours` from calculator.py
+- Remaining Concerns: None
+- Tests Added: 2 new tests in test_export.py:
+  1. `test_includes_historical_hours_lump_sum` - verifies lump sum hours included in chart data
+  2. `test_includes_historical_hours_by_month` - verifies monthly historical breakdown included in chart data
+- Verification Notes:
+  - **Models:** YearConfig.start_date, hours_pre_start, and HistoricalMonth all correctly implemented (models.py:96-97, 214-254)
+  - **Routes:** Midyear endpoints support both lump sum and monthly entry modes (setup.py:160-339)
+  - **Calculator:** get_historical_hours(), get_hours_billed_to_date(), and get_expected_hours_to_date() all correctly handle historical data (calculator.py:91-305)
+  - **Planner:** Months before start_date correctly get 0 allocation (planner.py:278-299)
+  - **Dashboard:** Plan status calculations include historical hours via calculate_plan_status() which calls get_hours_billed_to_date()
+  - **Export:** Now correctly includes historical hours in actual data line (export.py:177) and summary statistics
 
 ---
 

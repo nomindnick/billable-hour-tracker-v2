@@ -11,6 +11,7 @@ import pytest
 from app import create_app, db
 from app.models import (
     DailyEntry,
+    HistoricalMonth,
     IntensityLevel,
     MonthConfig,
     PlanConfig,
@@ -176,6 +177,73 @@ class TestGetCumulativeActualData:
 
             assert data[0].cumulative_hours == 100.0  # January
             assert data[1].cumulative_hours == 150.0  # Cumulative through Feb
+
+    def test_includes_historical_hours_lump_sum(self, app, year_config):
+        """Historical hours (lump sum) should be included in cumulative total."""
+        with app.app_context():
+            config = db.session.get(YearConfig, year_config.id)
+
+            # Set up mid-year start with historical lump sum
+            config.start_date = datetime.date(2025, 6, 1)
+            config.hours_pre_start = 500.0
+
+            # Add entry in June
+            june_entry = DailyEntry(
+                year_config=config,
+                date=datetime.date(2025, 6, 15),
+                hours_billed=50.0
+            )
+            db.session.add(june_entry)
+            db.session.commit()
+
+            data = get_cumulative_actual_data(config, through_month=6)
+
+            # First 5 months should show 500 (historical only, no daily entries)
+            for i in range(5):
+                assert data[i].cumulative_hours == 500.0
+
+            # June should show 500 + 50 = 550
+            assert data[5].cumulative_hours == 550.0
+
+    def test_includes_historical_hours_by_month(self, app, year_config):
+        """Historical hours (monthly breakdown) should be included in cumulative total."""
+        with app.app_context():
+            config = db.session.get(YearConfig, year_config.id)
+
+            # Set up mid-year start with monthly historical data
+            config.start_date = datetime.date(2025, 3, 1)
+
+            # Add historical months for Jan and Feb
+            jan_hist = HistoricalMonth(
+                year_config=config,
+                month=1,
+                hours_billed=150.0
+            )
+            feb_hist = HistoricalMonth(
+                year_config=config,
+                month=2,
+                hours_billed=160.0
+            )
+            db.session.add_all([jan_hist, feb_hist])
+
+            # Add entry in March
+            march_entry = DailyEntry(
+                year_config=config,
+                date=datetime.date(2025, 3, 15),
+                hours_billed=40.0
+            )
+            db.session.add(march_entry)
+            db.session.commit()
+
+            data = get_cumulative_actual_data(config, through_month=3)
+
+            # Historical total is 310 (150 + 160)
+            # Jan cumulative: 310 + 0 (no daily entry in Jan) = 310
+            assert data[0].cumulative_hours == 310.0
+            # Feb cumulative: 310 + 0 (no daily entry in Feb) = 310
+            assert data[1].cumulative_hours == 310.0
+            # March cumulative: 310 + 40 = 350
+            assert data[2].cumulative_hours == 350.0
 
 
 class TestCalculatePaceProjection:

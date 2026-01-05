@@ -24,6 +24,7 @@ from matplotlib.figure import Figure
 from app.models import PlanConfig, PlanType, YearConfig
 from app.services.calculator import (
     calculate_plan_status,
+    get_historical_hours,
     get_hours_billed_in_month,
     get_hours_billed_to_date,
 )
@@ -159,6 +160,9 @@ def get_cumulative_actual_data(
     """
     Calculate cumulative actual hours billed through each month.
 
+    Includes historical hours (from mid-year start) in the cumulative total,
+    ensuring the chart accurately reflects total hours billed.
+
     Args:
         year_config: The year configuration with daily entries
         through_month: Last month to include (1-12)
@@ -167,7 +171,10 @@ def get_cumulative_actual_data(
         List of ChartDataPoints with cumulative actual hours
     """
     data_points: list[ChartDataPoint] = []
-    cumulative = 0.0
+
+    # Start with historical hours for mid-year starts
+    # This ensures the chart shows total hours including pre-tracking data
+    cumulative = get_historical_hours(year_config)
 
     for month in range(1, through_month + 1):
         month_hours = get_hours_billed_in_month(year_config, year_config.year, month)

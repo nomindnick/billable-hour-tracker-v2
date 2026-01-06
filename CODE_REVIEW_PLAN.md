@@ -1967,42 +1967,49 @@ Test complete user workflows with realistic scenarios.
 
 **Test Steps:**
 **Empty States:**
-- [ ] Dashboard with no entries (first day)
-- [ ] Monthly view with no entries
-- [ ] History view with no entries
-- [ ] Export with no entries
+- [x] Dashboard with no entries (first day)
+- [x] Monthly view with no entries
+- [x] History view with no entries
+- [x] Export with no entries
 
 **Invalid Inputs:**
-- [ ] Enter negative hours (-5)
-- [ ] Enter excessive hours (25)
-- [ ] Enter non-numeric hours ("abc")
-- [ ] Enter hours with many decimal places (7.123456)
-- [ ] Select date outside configured year
-- [ ] Enter duplicate holiday
-- [ ] Enter vacation on existing holiday
+- [x] Enter negative hours (-5)
+- [x] Enter excessive hours (25)
+- [x] Enter non-numeric hours ("abc")
+- [x] Enter hours with many decimal places (7.123456)
+- [x] Select date outside configured year
+- [x] Enter duplicate holiday
+- [x] Enter vacation on existing holiday
 
 **Rapid Interactions:**
-- [ ] Submit entry form multiple times quickly
-- [ ] Navigate rapidly between views
-- [ ] Create and dismiss sprint rapidly
-- [ ] Edit entry while dashboard updating
+- [x] Submit entry form multiple times quickly
+- [N/A] Navigate rapidly between views (requires browser automation)
+- [x] Create and dismiss sprint rapidly
+- [N/A] Edit entry while dashboard updating (requires browser automation)
 
 **Browser Edge Cases:**
-- [ ] Refresh during form submission
-- [ ] Back button after submission
-- [ ] Open multiple tabs
-- [ ] Mobile browser testing
+- [N/A] Refresh during form submission (requires browser automation)
+- [N/A] Back button after submission (requires browser automation)
+- [N/A] Open multiple tabs (requires browser automation)
+- [N/A] Mobile browser testing (requires browser automation)
 
 **Expected Results:**
 - All edge cases handled gracefully
 - No crashes or data corruption
 - User-friendly error messages
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0 - All testable edge cases handled correctly by existing code
+- Fixes Applied: None needed
+- Remaining Concerns: Browser automation tests (Selenium/Playwright) would be needed for rapid navigation, HTMX-based interactions during updates, and mobile testing
+- Tests Added: 24 new tests in tests/test_integration_edge_cases.py
+  - TestEmptyStates (5 tests): dashboard, recent entries, monthly, history, export with no data
+  - TestInvalidHoursInput (5 tests): negative, >24, non-numeric, many decimals, empty
+  - TestInvalidDateInput (3 tests): wrong year, invalid format, far future
+  - TestDuplicatePrevention (3 tests): holiday duplicate, vacation duplicate, vacation on holiday
+  - TestRapidInteractions (3 tests): multiple entry submissions, multiple holiday adds, sprint create/dismiss
+  - TestBoundaryValues (5 tests): hours 0, 24, 0.5 increments, Dec 31, Jan 1
+- Total Tests: 462 (up from 438)
 
 ---
 
@@ -2014,50 +2021,56 @@ Test complete user workflows with realistic scenarios.
 
 **Test Steps:**
 **Early Year Export:**
-- [ ] Configure year and add entries for January only
-- [ ] Generate PNG export
-- [ ] Verify chart shows all three plan lines
-- [ ] Verify actual line shows January data only
-- [ ] Verify summary statistics accurate
-- [ ] Generate PDF export
-- [ ] Verify PDF opens correctly
+- [x] Configure year and add entries for January only
+- [x] Generate PNG export
+- [x] Verify chart shows all three plan lines
+- [x] Verify actual line shows January data only
+- [x] Verify summary statistics accurate
+- [x] Generate PDF export
+- [x] Verify PDF opens correctly
 
 **Mid-Year Export:**
-- [ ] Add entries through June
-- [ ] Generate exports
-- [ ] Verify cumulative actual line accurate
-- [ ] Verify projection calculation correct
-- [ ] Verify all months displayed
+- [x] Add entries through June
+- [x] Generate exports
+- [x] Verify cumulative actual line accurate
+- [x] Verify projection calculation correct
+- [x] Verify all months displayed
 
 **End-of-Year Export:**
-- [ ] Add entries for full year
-- [ ] Generate exports
-- [ ] Verify final totals correct
-- [ ] Verify comparison to plans accurate
+- [x] Add entries for full year
+- [x] Generate exports
+- [x] Verify final totals correct
+- [x] Verify comparison to plans accurate
 
 **Edge Cases:**
-- [ ] Export with exactly target met
-- [ ] Export with significantly over target
-- [ ] Export with significantly under target
-- [ ] Export with mid-year start
-- [ ] Export during active catch-up sprint
+- [x] Export with exactly target met
+- [x] Export with significantly over target
+- [x] Export with significantly under target
+- [x] Export with mid-year start
+- [x] Export during active catch-up sprint
 
 **File Verification:**
-- [ ] PNG file opens in image viewer
-- [ ] PNG has correct dimensions
-- [ ] PDF file opens in PDF reader
-- [ ] Filenames follow convention
+- [x] PNG file opens in image viewer
+- [x] PNG has correct dimensions
+- [x] PDF file opens in PDF reader
+- [x] Filenames follow convention
 
 **Expected Results:**
 - Exports accurate at all stages
 - Files download and open correctly
 - Summary statistics match dashboard
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0 - All export scenarios work correctly
+- Fixes Applied: None needed
+- Remaining Concerns: None
+- Tests Added: 19 new tests in tests/test_integration_export_scenarios.py
+  - TestEarlyYearExport (4 tests): January-only data, all plan lines present, summary stats, PNG/PDF generation
+  - TestMidYearExport (4 tests): June cumulative, projection calculation, all months, summary progress
+  - TestEndOfYearExport (3 tests): full year totals, comparison to target, December cumulative
+  - TestExportEdgeCases (5 tests): exactly on target, over target, under target, mid-year start with historical, active sprint
+  - TestFileVerification (3 tests): PNG dimensions, PDF content, filename convention
+- Total Tests: 481 (up from 462)
 
 ---
 

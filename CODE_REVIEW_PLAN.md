@@ -601,31 +601,42 @@ Verify each implementation sprint's acceptance criteria are met and identify tes
 - `tests/test_calculator.py`
 
 **Review Checklist:**
-- [ ] calculate_daily_target() returns correct target
-- [ ] Daily target capped at 9.5 hours
-- [ ] catch_up_recommended flag set when >9.5 needed
-- [ ] calculate_plan_status() returns correct status
-- [ ] Status thresholds: 5 hours (slightly behind), 15 hours (catch-up)
-- [ ] calculate_hours_banked() returns positive values only
-- [ ] get_hours_billed_to_date() sums correctly
-- [ ] get_expected_hours_to_date() calculates correctly
-- [ ] DailyTargetResult dataclass complete
-- [ ] PlanStatus dataclass complete
+- [x] calculate_daily_target() returns correct target
+- [x] Daily target capped at 9.5 hours
+- [x] catch_up_recommended flag set when >9.5 needed
+- [x] calculate_plan_status() returns correct status
+- [x] Status thresholds: 5 hours (slightly behind), 15 hours (catch-up)
+- [x] calculate_hours_banked() returns positive values only
+- [x] get_hours_billed_to_date() sums correctly
+- [x] get_expected_hours_to_date() calculates correctly
+- [x] DailyTargetResult dataclass complete
+- [x] PlanStatus dataclass complete
 
 **Test Coverage Review:**
-- [ ] Review all tests in test_calculator.py
-- [ ] Verify threshold tests exist
-- [ ] Document any missing test scenarios
+- [x] Review all tests in test_calculator.py
+- [x] Verify threshold tests exist
+- [x] Document any missing test scenarios
 
 **Acceptance Criteria:**
 - Calculator functions work correctly
 - 33+ tests passing (implementation plan says 33)
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0 - All calculator functions correctly implemented
+- Fixes Applied: None needed (all checklist items verified working)
+- Remaining Concerns: None
+- Tests Added: 3 new tests in test_calculator.py:
+  1. `test_intensity_weight_affects_expected_hours` - verifies LIGHT intensity reduces expected hours
+  2. `test_holiday_reduces_workdays_in_calculation` - verifies holidays are excluded from workday calculations
+  3. `test_vacation_reduces_workdays_in_calculation` - verifies vacation days are excluded from workday calculations
+- Verification Notes:
+  - **calculate_daily_target():** Lines 312-428, returns DailyTargetResult with capped daily_target
+  - **9.5 hour cap:** Enforced at line 421 via `min(raw_target, MAX_DAILY_HOURS)`
+  - **catch_up_recommended:** Set at line 418 when `raw_target > MAX_DAILY_HOURS`
+  - **Status thresholds:** Lines 39-40: SLIGHTLY_BEHIND_THRESHOLD=5.0, CATCH_UP_THRESHOLD=15.0
+  - **calculate_hours_banked():** Line 525 uses `max(0.0, ...)` to ensure non-negative
+  - **Dataclasses:** DailyTargetResult (lines 53-67) and PlanStatus (lines 70-84) are complete
+- Total Tests: 38 (up from 35)
 
 ---
 

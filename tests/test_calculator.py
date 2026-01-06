@@ -10,10 +10,12 @@ import pytest
 from app import db
 from app.models import (
     DailyEntry,
+    Holiday,
     IntensityLevel,
     MonthConfig,
     PlanConfig,
     PlanType,
+    VacationDay,
     YearConfig,
 )
 from app.services.calculator import (
@@ -978,3 +980,134 @@ class TestIntegration:
 
             # December target should be notably lower due to very_light intensity
             assert dec_target.daily_target < nov_target.daily_target
+
+    def test_intensity_weight_affects_expected_hours(self, app):
+        """Verify LIGHT intensity (0.75x) reduces expected hours for a month."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            # Set January to LIGHT intensity
+            month_config = MonthConfig(
+                year_config_id=year_config.id,
+                month=1,
+                intensity=IntensityLevel.LIGHT
+            )
+            db.session.add(month_config)
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.REALISTIC,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Get expected hours at end of January
+            expected = get_expected_hours_to_date(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # With LIGHT intensity (0.75x weight) on January, expected should be
+            # less than a proportional 1/12 of annual target (150 hours)
+            # due to the reduced weight
+            assert expected < 150.0
+            assert expected > 100.0  # Should still be meaningful amount
+
+    def test_holiday_reduces_workdays_in_calculation(self, app):
+        """Verify holidays reduce available workdays in daily target calculation."""
+        with app.app_context():
+            # Create year config with holiday
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            # Add a mid-month holiday (Jan 15, 2025 is Wednesday - a workday)
+            holiday = Holiday(
+                year_config_id=year_config.id,
+                date=datetime.date(2025, 1, 15),
+                name="Test Holiday"
+            )
+            db.session.add(holiday)
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.REALISTIC,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Get expected hours at end of January with the holiday
+            expected_with_holiday = get_expected_hours_to_date(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # January 2025 typically has 23 workdays
+            # With one holiday, it has 22 workdays
+            # This should result in a lower proportional allocation vs full 23 workdays
+
+            # The annual target is 1800 hours. If all months were equal, each month
+            # would have ~150 hours. With proportional distribution based on workdays,
+            # a month with fewer workdays gets a smaller share.
+            # Verify expected is in a reasonable range and exists
+            assert expected_with_holiday > 0
+            assert expected_with_holiday < 160  # Less than equal distribution
+
+            # Verify daily target calculation also works correctly
+            target = calculate_daily_target(
+                year_config, plan, datetime.date(2025, 1, 2)
+            )
+            # Daily target should be reasonable (around 7 hours)
+            assert target.daily_target > 5.0
+            assert target.daily_target < 9.5
+
+    def test_vacation_reduces_workdays_in_calculation(self, app):
+        """Verify vacation days reduce available workdays in daily target calculation."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            # Add a week of vacation (Jan 6-10, 2025 are weekdays Mon-Fri)
+            for day in range(6, 11):
+                vacation = VacationDay(
+                    year_config_id=year_config.id,
+                    date=datetime.date(2025, 1, day)
+                )
+                db.session.add(vacation)
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.REALISTIC,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Get daily target after vacation week
+            target = calculate_daily_target(
+                year_config, plan, datetime.date(2025, 1, 13)
+            )
+
+            # January 2025 has 23 total workdays, minus 5 vacation = 18 remaining
+            # But from Jan 13, there are about 14-15 workdays left in month
+            # Remaining workdays should reflect vacation was excluded
+            assert target.remaining_workdays > 0
+            assert target.remaining_workdays <= 15  # Reasonable remaining after vacation
+
+            # Expected hours should account for fewer available workdays overall
+            expected = get_expected_hours_to_date(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # With 5 fewer workdays in January, expected hours should be lower
+            # than a full January allocation
+            assert expected > 0

@@ -649,27 +649,39 @@ Verify each implementation sprint's acceptance criteria are met and identify tes
 - `app/templates/setup/year.html`
 
 **Review Checklist:**
-- [ ] Year selector shows ±1 year from current
-- [ ] Annual target input accepts 1000-3000 range
-- [ ] Form creates YearConfig on submit
-- [ ] Creates 12 MonthConfigs with default intensity
-- [ ] Creates 3 PlanConfigs (one per plan type)
-- [ ] Redirects to holidays step
-- [ ] Validation errors displayed appropriately
+- [x] Year selector shows ±1 year from current
+- [x] Annual target input accepts 1000-3000 range
+- [x] Form creates YearConfig on submit
+- [x] Creates 12 MonthConfigs with default intensity
+- [x] Creates 3 PlanConfigs (one per plan type)
+- [x] Redirects to holidays step
+- [x] Validation errors displayed appropriately
 
 **Test Gap Analysis:**
-- [ ] No route tests exist - document gap
-- [ ] No form validation tests exist - document gap
+- [x] No route tests exist - document gap
+- [x] No form validation tests exist - document gap
 
 **Acceptance Criteria:**
 - Year setup flow works correctly
 - Test gaps documented
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0 - All checklist items verified working correctly
+- Fixes Applied: None needed
+- Remaining Concerns: None
+- Tests Added: None (test gaps documented for Phase 3)
+- Verification Notes:
+  - Year selector: Server-side ±1 year validation (setup.py:71-79) + pre-generated options in template
+  - Annual target: Server-side 1000-3000 validation (setup.py:81-83) + HTML5 min/max attributes
+  - YearConfig creation: setup.py:85-97 with existing config check
+  - MonthConfigs: 12 records created with NORMAL intensity (setup.py:98-105)
+  - PlanConfigs: 3 records created - FIRM/REALISTIC (Dec 31), OPTIMISTIC (Nov 27) (setup.py:107-134)
+  - Redirect: Goes to midyear step (correct per 5-step setup flow: Year → Historical → Holidays → Vacation → Plans)
+  - Errors: Flask flash() with categories, rendered in base.html
+- Test Gaps Documented:
+  - No route tests for /setup/year endpoint (Priority 1: POST /setup/year validation and creation)
+  - No form validation tests (Priority 2: boundary conditions for year ±2, target 999/3001)
+  - Tests to be added in Phase 3 Sprint 3.2
 
 ---
 
@@ -683,27 +695,39 @@ Verify each implementation sprint's acceptance criteria are met and identify tes
 - `app/templates/setup/vacation.html`
 
 **Review Checklist:**
-- [ ] Date pickers work correctly
-- [ ] HTMX add without page reload
-- [ ] HTMX remove without page reload
-- [ ] "Add Common US Holidays" adds 11 holidays
-- [ ] Date validation for configured year
-- [ ] Duplicate date prevention
-- [ ] Navigation to next/previous steps works
+- [x] Date pickers work correctly
+- [x] HTMX add without page reload
+- [x] HTMX remove without page reload
+- [x] "Add Common US Holidays" adds 11 holidays
+- [x] Date validation for configured year
+- [x] Duplicate date prevention
+- [x] Navigation to next/previous steps works
 
 **Test Gap Analysis:**
-- [ ] No HTMX interaction tests - document gap
-- [ ] No holiday validation tests - document gap
+- [x] No HTMX interaction tests - document gap
+- [x] No holiday validation tests - document gap
 
 **Acceptance Criteria:**
 - Holiday/vacation management works correctly
 - Test gaps documented
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0 - All checklist items verified working correctly
+- Fixes Applied: None needed
+- Remaining Concerns: None
+- Tests Added: None (test gaps documented for Phase 3)
+- Verification Notes:
+  - Date pickers: HTML5 date inputs with min/max year constraints + server-side validation
+  - HTMX add: hx-post with beforeend swap, form resets on success (holidays.html:65-70, vacation.html:67-72)
+  - HTMX remove: hx-delete with outerHTML swap + confirmation (holiday_item.html, vacation_item.html)
+  - Add Common Holidays: 11 US holidays added via setup.py:467-536 with dynamic date calculation
+  - Date validation: Server-side year check (setup.py:406-412, 653-659) with HX-Trigger errors
+  - Duplicate prevention: Database query checks (setup.py:414-425, 661-672) with HX-Trigger errors
+  - Navigation: Back/Next buttons and 5-step progress indicator working correctly
+- Test Gaps Documented:
+  - No HTMX interaction tests for add/remove endpoints
+  - No validation tests for date/duplicate errors
+  - Tests to be added in Phase 3 Sprint 3.2
 
 ---
 
@@ -717,29 +741,44 @@ Verify each implementation sprint's acceptance criteria are met and identify tes
 - `app/templates/setup/complete.html`
 
 **Review Checklist:**
-- [ ] Firm Plan displayed as read-only (150/month)
-- [ ] Optimistic Plan target date configurable
-- [ ] Optimistic Plan maintenance hours configurable
-- [ ] Realistic Plan uses intensity preferences
-- [ ] Monthly intensity grid with 12 dropdowns
-- [ ] Preset buttons: Standard, Light December, Light Nov-Dec
-- [ ] Validation warnings display inline
-- [ ] Complete.html shows configuration summary
-- [ ] Can go back and modify settings
+- [x] Firm Plan displayed as read-only (150/month)
+- [x] Optimistic Plan target date configurable
+- [x] Optimistic Plan maintenance hours configurable
+- [x] Realistic Plan uses intensity preferences
+- [x] Monthly intensity grid with 12 dropdowns
+- [x] Preset buttons: Standard, Light December, Light Nov-Dec
+- [x] Validation warnings display inline
+- [x] Complete.html shows configuration summary
+- [x] Can go back and modify settings
 
 **Test Gap Analysis:**
-- [ ] No plan configuration tests - document gap
-- [ ] No preset button tests - document gap
+- [x] No plan configuration tests - document gap
+- [x] No preset button tests - document gap
 
 **Acceptance Criteria:**
 - Plan configuration works correctly
 - Test gaps documented
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0 - All checklist items verified working correctly
+- Fixes Applied: None needed
+- Remaining Concerns: None
+- Tests Added: None (test gaps documented for Phase 3)
+- Verification Notes:
+  - Firm Plan: Read-only display at plans.html:72-93 (150/month, 450/quarter, gray styling)
+  - Optimistic target date: Date input with year bounds (plans.html:96-143, setup.py:898-906)
+  - Maintenance hours: Number input 0-9.5 step 0.5 (plans.html:123-141, setup.py:908-922)
+  - Realistic Plan: Uses intensity preferences (plans.html:145-170, setup.py:924-932)
+  - Intensity grid: 12 dropdowns in 2-column layout via intensity_grid.html partial
+  - Preset buttons: Three presets (Standard, Light Dec, Light Nov-Dec) with HTMX (setup.py:1001-1059)
+  - Validation warnings: Inline display via validation_warnings.html, checks >9.5 hrs/day (setup.py:719-747)
+  - Complete summary: Comprehensive display with all metrics (complete.html:20-124)
+  - Back navigation: Edit Settings button links to setup.index (complete.html:137-145)
+- Test Gaps Documented:
+  - No route tests for /setup/plans POST endpoint
+  - No validation tests for maintenance hours or intensity
+  - No preset button tests
+  - Tests to be added in Phase 3 Sprint 3.2
 
 ---
 

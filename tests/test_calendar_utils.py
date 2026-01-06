@@ -487,3 +487,170 @@ class TestGetWeekendDaysInRange:
         # Feb 3-7: no weekends (Mon-Fri)
         # Feb 8-9: Sat, Sun
         assert len(weekends) == 4
+
+
+class TestDateEdgeCases:
+    """Date handling edge case tests - Sprint 3.11."""
+
+    def test_feb_29_as_holiday_in_leap_year(self):
+        """Feb 29 as a holiday in leap year (2024) is excluded from workdays."""
+        # Feb 29, 2024 is a Thursday (workday)
+        leap_day = datetime.date(2024, 2, 29)
+        holidays = {leap_day}
+
+        workdays = get_workdays_in_month(2024, 2, holidays, set())
+
+        # Feb 2024 has 21 weekdays, minus 1 holiday = 20
+        assert len(workdays) == 20
+        assert leap_day not in workdays
+
+    def test_feb_29_as_vacation_in_leap_year(self):
+        """Feb 29 as vacation day in leap year (2024) is excluded from workdays."""
+        # Feb 29, 2024 is a Thursday (workday)
+        leap_day = datetime.date(2024, 2, 29)
+        vacation = {leap_day}
+
+        workdays = get_workdays_in_month(2024, 2, set(), vacation)
+
+        # Feb 2024 has 21 weekdays, minus 1 vacation = 20
+        assert len(workdays) == 20
+        assert leap_day not in workdays
+
+    def test_april_has_correct_workdays(self):
+        """April 2025 (30 days) has correct workday count."""
+        # April 2025: starts on Tuesday, ends on Wednesday
+        # 22 weekdays
+        workdays = get_workdays_in_month(2025, 4, set(), set())
+
+        assert len(workdays) == 22
+        assert workdays[0] == datetime.date(2025, 4, 1)  # Tuesday
+        assert workdays[-1] == datetime.date(2025, 4, 30)  # Wednesday
+
+    def test_june_has_correct_workdays(self):
+        """June 2025 (30 days) has correct workday count."""
+        # June 2025: starts on Sunday, ends on Monday
+        # 21 weekdays
+        workdays = get_workdays_in_month(2025, 6, set(), set())
+
+        assert len(workdays) == 21
+        # First workday is Monday June 2 (June 1 is Sunday)
+        assert workdays[0] == datetime.date(2025, 6, 2)
+        assert workdays[-1] == datetime.date(2025, 6, 30)  # Monday
+
+    def test_jan_1_when_weekday(self):
+        """Jan 1 counted when it's a weekday (2025 is Wednesday)."""
+        # Jan 1, 2025 is Wednesday
+        jan_1 = datetime.date(2025, 1, 1)
+
+        workdays = get_workdays_in_month(2025, 1, set(), set())
+
+        assert jan_1 in workdays
+        assert workdays[0] == jan_1
+
+    def test_jan_1_when_weekend(self):
+        """Jan 1 excluded when on weekend (2028 is Saturday)."""
+        # Jan 1, 2028 is Saturday
+        jan_1 = datetime.date(2028, 1, 1)
+
+        workdays = get_workdays_in_month(2028, 1, set(), set())
+
+        assert jan_1 not in workdays
+        # First workday is Monday Jan 3
+        assert workdays[0] == datetime.date(2028, 1, 3)
+
+    def test_remaining_workdays_on_dec_31(self):
+        """get_remaining_workdays_in_month on Dec 31 returns just that day if workday."""
+        # Dec 31, 2025 is Wednesday
+        dec_31 = datetime.date(2025, 12, 31)
+
+        remaining = get_remaining_workdays_in_month(dec_31, set(), set())
+
+        assert remaining == [dec_31]
+
+    def test_dec_31_when_weekend(self):
+        """Dec 31 excluded when on weekend (2028 is Sunday)."""
+        # Dec 31, 2028 is Sunday
+        dec_31 = datetime.date(2028, 12, 31)
+
+        workdays = get_workdays_in_month(2028, 12, set(), set())
+
+        assert dec_31 not in workdays
+        # Last workday is Friday Dec 29
+        assert workdays[-1] == datetime.date(2028, 12, 29)
+
+    def test_holiday_on_weekend_no_double_count(self):
+        """Holiday falling on weekend doesn't affect workday count."""
+        # July 4, 2026 is Saturday
+        july_4_saturday = datetime.date(2026, 7, 4)
+
+        # Without holiday in set
+        workdays_without = get_workdays_in_month(2026, 7, set(), set())
+        # With holiday in set (shouldn't matter - already a weekend)
+        workdays_with = get_workdays_in_month(2026, 7, {july_4_saturday}, set())
+
+        # Both should have 23 workdays (July 2026 has 23 weekdays)
+        assert len(workdays_without) == 23
+        assert len(workdays_with) == 23
+
+    def test_consecutive_holidays_across_weekend(self):
+        """Holidays Thu-Tue with weekend in middle counted correctly."""
+        # Create holidays for Thu, Fri, Mon, Tue (weekend already excluded)
+        # Use Jan 2025 week: Jan 9 Thu, 10 Fri, 13 Mon, 14 Tue
+        holidays = {
+            datetime.date(2025, 1, 9),   # Thursday
+            datetime.date(2025, 1, 10),  # Friday
+            datetime.date(2025, 1, 13),  # Monday
+            datetime.date(2025, 1, 14),  # Tuesday
+        }
+
+        workdays = get_workdays_in_month(2025, 1, holidays, set())
+
+        # January 2025 has 23 weekdays, minus 4 holidays = 19
+        assert len(workdays) == 19
+        for holiday in holidays:
+            assert holiday not in workdays
+
+    def test_entire_month_as_vacation(self):
+        """All workdays in month as vacation returns empty list."""
+        # Get all February 2025 weekdays and mark as vacation
+        all_feb_weekdays = set()
+        for day in range(1, 29):  # Feb 2025 has 28 days
+            date = datetime.date(2025, 2, day)
+            if date.weekday() < 5:  # Mon-Fri
+                all_feb_weekdays.add(date)
+
+        workdays = get_workdays_in_month(2025, 2, set(), all_feb_weekdays)
+
+        assert workdays == []
+
+    def test_range_feb_27_to_mar_2_leap_year(self):
+        """Range Feb 27 - Mar 2 in leap year includes Feb 29."""
+        # Feb 27, 2024 = Tuesday
+        # Feb 28, 2024 = Wednesday
+        # Feb 29, 2024 = Thursday (leap day!)
+        # Mar 1, 2024 = Friday
+        # Mar 2, 2024 = Saturday (weekend)
+        start = datetime.date(2024, 2, 27)
+        end = datetime.date(2024, 3, 2)
+
+        workdays = get_workdays_in_range(start, end, set(), set())
+
+        assert len(workdays) == 4
+        assert datetime.date(2024, 2, 29) in workdays
+
+    def test_range_feb_27_to_mar_2_non_leap_year(self):
+        """Range Feb 27 - Mar 2 in non-leap year skips Feb 29."""
+        # Feb 27, 2025 = Thursday
+        # Feb 28, 2025 = Friday
+        # (no Feb 29)
+        # Mar 1, 2025 = Saturday (weekend)
+        # Mar 2, 2025 = Sunday (weekend)
+        start = datetime.date(2025, 2, 27)
+        end = datetime.date(2025, 3, 2)
+
+        workdays = get_workdays_in_range(start, end, set(), set())
+
+        # Only Feb 27 (Thu) and Feb 28 (Fri) are workdays
+        assert len(workdays) == 2
+        assert datetime.date(2025, 2, 27) in workdays
+        assert datetime.date(2025, 2, 28) in workdays

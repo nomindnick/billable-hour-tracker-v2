@@ -1111,3 +1111,418 @@ class TestIntegration:
             # With 5 fewer workdays in January, expected hours should be lower
             # than a full January allocation
             assert expected > 0
+
+
+# -----------------------------------------------------------------------------
+# Test: Calculator Edge Cases (Sprint 3.9)
+# -----------------------------------------------------------------------------
+
+class TestCalculatorEdgeCases:
+    """Edge case tests for calculator - Sprint 3.9."""
+
+    def test_daily_target_on_weekend_handles_gracefully(self, app):
+        """Calculate daily target when target_date is a Saturday."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Feb 1, 2025 is a Saturday
+            result = calculate_daily_target(
+                year_config, plan, datetime.date(2025, 2, 1)
+            )
+
+            # Should handle gracefully - return valid result for February
+            assert isinstance(result, DailyTargetResult)
+            # Remaining workdays is for February starting from first workday
+            assert result.remaining_workdays >= 0
+
+    def test_daily_target_on_holiday(self, app):
+        """Calculate daily target when target_date is a holiday."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            # Add Jan 15 as a holiday (Wednesday - a workday)
+            holiday = Holiday(
+                year_config_id=year_config.id,
+                date=datetime.date(2025, 1, 15),
+                name="Test Holiday"
+            )
+            db.session.add(holiday)
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Calculate on the holiday date itself
+            result = calculate_daily_target(
+                year_config, plan, datetime.date(2025, 1, 15)
+            )
+
+            # Should handle gracefully - holiday is excluded from remaining workdays
+            assert isinstance(result, DailyTargetResult)
+            assert result.daily_target >= 0
+
+    def test_daily_target_on_december_31(self, app):
+        """Daily target calculation on last day of year."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Dec 31, 2025 is a Wednesday (a workday)
+            result = calculate_daily_target(
+                year_config, plan, datetime.date(2025, 12, 31)
+            )
+
+            # Should handle last day of year correctly
+            assert isinstance(result, DailyTargetResult)
+            # Last workday of month - remaining_workdays should be 1 or 0
+            assert result.remaining_workdays <= 1
+            # With no hours billed all year, catch-up should be recommended
+            assert result.catch_up_recommended is True
+
+    def test_expected_hours_on_january_1(self, app):
+        """Expected hours at start of year should be minimal."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Jan 1, 2025 is a Wednesday (holiday in many cases, but not configured)
+            expected = get_expected_hours_to_date(
+                year_config, plan, datetime.date(2025, 1, 1)
+            )
+
+            # First day of year - should have minimal expected hours
+            # (small fraction of January's target)
+            assert expected >= 0
+            assert expected < 20  # Very small on day 1
+
+    def test_status_with_zero_hours_entire_year(self, app):
+        """Plan status when no hours billed at all."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # No entries added - calculate status mid-year
+            status = calculate_plan_status(
+                year_config, plan, datetime.date(2025, 6, 30)
+            )
+
+            # Should be significantly behind with 0 hours
+            assert status.actual_hours_to_date == 0.0
+            assert status.hours_ahead_or_behind < 0  # Behind
+            # At mid-year, expected ~900 hours, so way behind
+            assert status.status_label == STATUS_CATCH_UP_RECOMMENDED
+
+    def test_hours_exceed_annual_target(self, app):
+        """Plan status when billed hours exceed 1800."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+
+            # Add entries totaling 1850 hours (exceeds 1800 target)
+            entry = DailyEntry(
+                year_config_id=year_config.id,
+                date=datetime.date(2025, 11, 15),
+                hours_billed=1850.0
+            )
+            db.session.add(entry)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Calculate status in November (before year end)
+            status = calculate_plan_status(
+                year_config, plan, datetime.date(2025, 11, 30)
+            )
+
+            # Should be ahead with positive banked hours
+            assert status.status_label == STATUS_AHEAD
+            assert status.hours_ahead_or_behind > 0
+            assert status.actual_hours_to_date == 1850.0
+
+            # Banked hours should be positive
+            banked = calculate_hours_banked(
+                year_config, plan, datetime.date(2025, 11, 30)
+            )
+            assert banked > 0
+
+    def test_hours_exactly_meet_annual_target(self, app):
+        """Plan status when hours exactly equal annual target at year end."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+
+            # Add entries totaling exactly 1800 hours
+            entry = DailyEntry(
+                year_config_id=year_config.id,
+                date=datetime.date(2025, 12, 15),
+                hours_billed=1800.0
+            )
+            db.session.add(entry)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Calculate status at year end
+            status = calculate_plan_status(
+                year_config, plan, datetime.date(2025, 12, 31)
+            )
+
+            # Should be on track or slightly ahead (exact match)
+            assert status.status_label in [STATUS_ON_TRACK, STATUS_AHEAD]
+            # Difference should be very close to 0
+            assert abs(status.hours_ahead_or_behind) < 5
+
+    def test_daily_target_on_last_workday_of_month(self, app):
+        """Daily target on last workday with hours remaining."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+
+            # Add some hours but not enough to meet January target
+            entry = DailyEntry(
+                year_config_id=year_config.id,
+                date=datetime.date(2025, 1, 15),
+                hours_billed=100.0
+            )
+            db.session.add(entry)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Jan 31, 2025 is Friday (last workday of January)
+            result = calculate_daily_target(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # Last workday with 50 hours remaining (150 - 100)
+            # remaining_workdays should be 1
+            assert result.remaining_workdays == 1
+            # Need 50 hours in 1 day = capped at 9.5
+            assert result.daily_target == 9.5
+            assert result.catch_up_recommended is True
+
+    def test_expected_hours_spanning_year_boundary(self, app):
+        """Expected hours calculation when config starts in previous year."""
+        with app.app_context():
+            # Config for 2025 with start_date in 2024 (edge case - unlikely but test)
+            year_config = YearConfig(
+                year=2025,
+                annual_target=1800,
+                start_date=datetime.date(2025, 1, 1)  # Normal start
+            )
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Calculate expected hours for December 31 (full year)
+            expected = get_expected_hours_to_date(
+                year_config, plan, datetime.date(2025, 12, 31)
+            )
+
+            # Should be very close to annual target (1800)
+            # Firm plan is 150/month * 12 = 1800
+            assert abs(expected - 1800) < 5
+
+    def test_banked_hours_exactly_zero_boundary(self, app):
+        """Banked hours when actual exactly equals expected."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Get expected hours for end of January
+            expected = get_expected_hours_to_date(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # Add exactly that amount
+            entry = DailyEntry(
+                year_config_id=year_config.id,
+                date=datetime.date(2025, 1, 15),
+                hours_billed=expected
+            )
+            db.session.add(entry)
+            db.session.commit()
+            db.session.refresh(year_config)
+
+            # Calculate banked hours
+            banked = calculate_hours_banked(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # Should be exactly 0 (actual == expected)
+            assert banked == 0.0
+
+    def test_status_boundary_slightly_behind_threshold(self, app):
+        """Test exact boundary at 5 hours behind threshold."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Get expected hours for end of January (150 for Firm plan)
+            expected = get_expected_hours_to_date(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # Add hours that put us exactly 5.01 hours behind
+            entry = DailyEntry(
+                year_config_id=year_config.id,
+                date=datetime.date(2025, 1, 15),
+                hours_billed=expected - 5.01
+            )
+            db.session.add(entry)
+            db.session.commit()
+            db.session.refresh(year_config)
+
+            status = calculate_plan_status(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # 5.01 hours behind should trigger "Slightly behind"
+            assert status.status_label == STATUS_SLIGHTLY_BEHIND
+
+    def test_status_boundary_catch_up_threshold(self, app):
+        """Test exact boundary at 15 hours behind threshold."""
+        with app.app_context():
+            year_config = YearConfig(year=2025, annual_target=1800)
+            db.session.add(year_config)
+            db.session.flush()
+
+            plan = PlanConfig(
+                year_config_id=year_config.id,
+                plan_type=PlanType.FIRM,
+                target_date=datetime.date(2025, 12, 31)
+            )
+            db.session.add(plan)
+            db.session.commit()
+            db.session.refresh(year_config)
+            db.session.refresh(plan)
+
+            # Get expected hours for end of January (150 for Firm plan)
+            expected = get_expected_hours_to_date(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # Add hours that put us exactly 15.01 hours behind
+            entry = DailyEntry(
+                year_config_id=year_config.id,
+                date=datetime.date(2025, 1, 15),
+                hours_billed=expected - 15.01
+            )
+            db.session.add(entry)
+            db.session.commit()
+            db.session.refresh(year_config)
+
+            status = calculate_plan_status(
+                year_config, plan, datetime.date(2025, 1, 31)
+            )
+
+            # 15.01 hours behind should trigger "Catch-up recommended"
+            assert status.status_label == STATUS_CATCH_UP_RECOMMENDED

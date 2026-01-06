@@ -22,7 +22,7 @@
     </div>
 </div>
 
-{% elif preview is not none %}
+{% elif preview is defined and preview is not none %}
 {# Preview with calculated data #}
 <div class="border rounded-lg overflow-hidden {% if preview.is_feasible %}{% if preview.message_type == 'success' %}border-green-200{% else %}border-amber-200{% endif %}{% else %}border-red-200{% endif %}" data-feasible="{{ 'true' if preview.is_feasible else 'false' }}">
     {# Header with status #}

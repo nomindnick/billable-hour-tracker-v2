@@ -462,36 +462,41 @@ Verify each implementation sprint's acceptance criteria are met and identify tes
 - `app/models.py`
 
 **Review Checklist:**
-- [ ] YearConfig model with all fields
-- [ ] Holiday model with year_config relationship
-- [ ] VacationDay model with year_config relationship
-- [ ] MonthConfig model with intensity enum
-- [ ] PlanConfig model with plan_type enum
-- [ ] DailyEntry model with date uniqueness
-- [ ] CatchUpSprint model with status enum
-- [ ] HistoricalMonth model for mid-year
-- [ ] IntensityLevel enum: NORMAL, LIGHT, VERY_LIGHT
-- [ ] PlanType enum: FIRM, OPTIMISTIC, REALISTIC
-- [ ] SprintStatus enum: ACTIVE, COMPLETED, REVISED, DISMISSED
-- [ ] Cascade delete configured on all relationships
-- [ ] Unique constraints on appropriate fields
-- [ ] Indexes on frequently queried fields
-- [ ] init-db command creates all tables
+- [x] YearConfig model with all fields
+- [x] Holiday model with year_config relationship
+- [x] VacationDay model with year_config relationship
+- [x] MonthConfig model with intensity enum
+- [x] PlanConfig model with plan_type enum
+- [x] DailyEntry model with date uniqueness
+- [x] CatchUpSprint model with status enum
+- [x] HistoricalMonth model for mid-year
+- [x] IntensityLevel enum: NORMAL, LIGHT, VERY_LIGHT
+- [x] PlanType enum: FIRM, OPTIMISTIC, REALISTIC
+- [x] SprintStatus enum: ACTIVE, COMPLETED, REVISED, DISMISSED
+- [x] Cascade delete configured on all relationships
+- [x] Unique constraints on appropriate fields
+- [x] Indexes on frequently queried fields
+- [x] init-db command creates all tables
 
 **Test Gap Analysis:**
-- [ ] No model validation tests exist - document gap
-- [ ] No cascade delete tests exist - document gap
-- [ ] No unique constraint tests exist - document gap
+- [x] No model validation tests exist - document gap
+- [x] No cascade delete tests exist - document gap
+- [x] No unique constraint tests exist - document gap
 
 **Acceptance Criteria:**
 - All models match implementation plan
 - Relationships and constraints verified
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 1 (missing unique constraint on YearConfig.year)
+- Fixes Applied: Added `unique=True` to YearConfig.year column in models.py:94
+- Remaining Concerns: None
+- Tests Added: 21 new tests in tests/test_models.py covering:
+  - Model creation tests (10 tests): YearConfig, Holiday, VacationDay, MonthConfig, PlanConfig, DailyEntry, CatchUpSprint, HistoricalMonth
+  - Unique constraint tests (7 tests): YearConfig.year, Holiday date, VacationDay date, MonthConfig month, PlanConfig plan_type, DailyEntry date, HistoricalMonth month
+  - Cascade delete test (1 test): YearConfig deletion removes all children
+  - Enum value tests (3 tests): IntensityLevel, PlanType, SprintStatus
+- Total Tests: 216 (up from 195)
 
 ---
 

@@ -91,7 +91,7 @@ class YearConfig(db.Model):
     __tablename__ = "year_config"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    year: Mapped[int] = mapped_column(nullable=False)
+    year: Mapped[int] = mapped_column(nullable=False, unique=True)
     annual_target: Mapped[int] = mapped_column(default=1800)
     start_date: Mapped[Optional[datetime.date]] = mapped_column(nullable=True)
     hours_pre_start: Mapped[Optional[float]] = mapped_column(nullable=True)

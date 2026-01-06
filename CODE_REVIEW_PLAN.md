@@ -1233,24 +1233,27 @@ Create comprehensive tests for identified gaps.
 - New file: `tests/test_routes_dashboard.py`
 
 **Tests to Create:**
-- [ ] GET / returns 200 with valid YearConfig
-- [ ] GET / redirects to /setup/ without YearConfig
-- [ ] Dashboard shows correct today's target
-- [ ] Dashboard shows correct weekly progress
-- [ ] Dashboard shows correct monthly progress
-- [ ] Dashboard shows all three plan status cards
-- [ ] Dashboard shows active sprint when exists
-- [ ] Dashboard handles no entries gracefully
+- [x] GET / returns 200 with valid YearConfig
+- [x] GET / redirects to /setup/ without YearConfig
+- [x] Dashboard shows correct today's target
+- [x] Dashboard shows correct weekly progress
+- [x] Dashboard shows correct monthly progress
+- [x] Dashboard shows all three plan status cards
+- [x] Dashboard shows active sprint when exists
+- [x] Dashboard handles no entries gracefully
 
 **Acceptance Criteria:**
 - All dashboard routes have test coverage
 - Tests pass
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0
+- Fixes Applied: None needed
+- Remaining Concerns: None
+- Tests Added: 8 new tests in tests/test_routes_dashboard.py
+  - TestDashboardAccess (3 tests): access with/without config, no entries
+  - TestDashboardContent (5 tests): target, weekly, monthly, plan cards, sprint
+- Total tests: 227 (up from 219)
 
 ---
 

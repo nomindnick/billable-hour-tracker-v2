@@ -1266,32 +1266,39 @@ Create comprehensive tests for identified gaps.
 - New file: `tests/test_routes_setup.py`
 
 **Tests to Create:**
-- [ ] GET /setup/ returns setup form
-- [ ] POST /setup/year creates YearConfig
-- [ ] POST /setup/year validates year range
-- [ ] POST /setup/year validates target range
-- [ ] GET /setup/holidays shows holiday form
-- [ ] POST /setup/holidays adds holiday
-- [ ] POST /setup/holidays prevents duplicates
-- [ ] POST /setup/holidays validates date in year
-- [ ] DELETE /setup/holidays removes holiday
-- [ ] GET /setup/vacation shows vacation form
-- [ ] POST /setup/vacation adds vacation day
-- [ ] GET /setup/plans shows plan configuration
-- [ ] POST /setup/plans saves plan configs
-- [ ] GET /setup/complete shows summary
-- [ ] GET /setup/midyear shows historical entry form
-- [ ] POST /setup/midyear saves historical hours
+- [x] GET /setup/ returns setup form
+- [x] POST /setup/year creates YearConfig
+- [x] POST /setup/year validates year range
+- [x] POST /setup/year validates target range
+- [x] GET /setup/holidays shows holiday form
+- [x] POST /setup/holidays adds holiday
+- [x] POST /setup/holidays prevents duplicates
+- [x] POST /setup/holidays validates date in year
+- [x] DELETE /setup/holidays removes holiday
+- [x] GET /setup/vacation shows vacation form
+- [x] POST /setup/vacation adds vacation day
+- [x] GET /setup/plans shows plan configuration
+- [x] POST /setup/plans saves plan configs
+- [x] GET /setup/complete shows summary
+- [x] GET /setup/midyear shows historical entry form
+- [x] POST /setup/midyear saves historical hours
 
 **Acceptance Criteria:**
 - All setup routes have test coverage
 - Tests pass
 
-**Sprint Findings:** *(fill in after completing sprint)*
-- Issues Found:
-- Fixes Applied:
-- Remaining Concerns:
-- Tests Added:
+**Sprint Findings:**
+- Issues Found: 0
+- Fixes Applied: None needed
+- Remaining Concerns: Flask-SQLAlchemy internal deprecation warning (not in test code)
+- Tests Added: 16 new tests in tests/test_routes_setup.py
+  - TestYearSetup (4 tests): GET form, POST creates/validates
+  - TestHolidaySetup (5 tests): GET form, POST add/duplicate/validate, DELETE
+  - TestVacationSetup (2 tests): GET form, POST add
+  - TestPlansSetup (2 tests): GET config, POST save
+  - TestCompletePage (1 test): GET summary
+  - TestMidYearSetup (2 tests): GET form, POST historical
+- Total tests: 243 (up from 227)
 
 ---
 

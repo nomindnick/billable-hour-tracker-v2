@@ -16,7 +16,7 @@ import datetime
 from enum import Enum as PyEnum
 from typing import Optional
 
-from sqlalchemy import Enum, ForeignKey, Index, UniqueConstraint
+from sqlalchemy import CheckConstraint, Enum, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app import db
@@ -133,7 +133,13 @@ class YearConfig(db.Model):
         cascade="all, delete-orphan"
     )
 
+    # Validation constraints
+    __table_args__ = (
+        CheckConstraint("annual_target > 0", name="ck_year_config_annual_target_positive"),
+    )
+
     def __repr__(self) -> str:
+        """Return string representation of YearConfig."""
         return f"<YearConfig {self.year}: {self.annual_target} hours>"
 
 
@@ -170,6 +176,7 @@ class Holiday(db.Model):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of Holiday."""
         name_str = f" ({self.name})" if self.name else ""
         return f"<Holiday {self.date}{name_str}>"
 
@@ -207,6 +214,7 @@ class VacationDay(db.Model):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of VacationDay."""
         note_str = f" ({self.note})" if self.note else ""
         return f"<VacationDay {self.date}{note_str}>"
 
@@ -248,9 +256,12 @@ class HistoricalMonth(db.Model):
             name="uq_historical_month_year_month"
         ),
         Index("ix_historical_month_year", "year_config_id"),
+        CheckConstraint("month >= 1 AND month <= 12", name="ck_historical_month_valid"),
+        CheckConstraint("hours_billed >= 0", name="ck_historical_month_hours_non_negative"),
     )
 
     def __repr__(self) -> str:
+        """Return string representation of HistoricalMonth."""
         return f"<HistoricalMonth month={self.month}: {self.hours_billed} hours>"
 
 
@@ -286,9 +297,11 @@ class MonthConfig(db.Model):
     # Each month can only have one config per year
     __table_args__ = (
         UniqueConstraint("year_config_id", "month", name="uq_month_config_year_month"),
+        CheckConstraint("month >= 1 AND month <= 12", name="ck_month_config_valid"),
     )
 
     def __repr__(self) -> str:
+        """Return string representation of MonthConfig."""
         return f"<MonthConfig month={self.month} intensity={self.intensity.value}>"
 
 
@@ -335,6 +348,7 @@ class PlanConfig(db.Model):
     )
 
     def __repr__(self) -> str:
+        """Return string representation of PlanConfig."""
         return f"<PlanConfig {self.plan_type.value} target={self.target_date}>"
 
 
@@ -372,17 +386,19 @@ class DailyEntry(db.Model):
     # Relationship back to parent
     year_config: Mapped["YearConfig"] = relationship(back_populates="daily_entries")
 
-    # Each date can only have one entry per year; also index date for queries
+    # Each date can only have one entry per year; compound index for queries
     __table_args__ = (
         UniqueConstraint(
             "year_config_id",
             "date",
             name="uq_daily_entry_year_date"
         ),
-        Index("ix_daily_entry_date", "date"),
+        Index("ix_daily_entry_year_date", "year_config_id", "date"),
+        CheckConstraint("hours_billed >= 0", name="ck_daily_entry_hours_non_negative"),
     )
 
     def __repr__(self) -> str:
+        """Return string representation of DailyEntry."""
         return f"<DailyEntry {self.date}: {self.hours_billed} hours>"
 
 
@@ -432,12 +448,14 @@ class CatchUpSprint(db.Model):
     # Relationship back to parent
     year_config: Mapped["YearConfig"] = relationship(back_populates="catch_up_sprints")
 
-    # Index for finding active sprints quickly
+    # Index for finding active sprints quickly; validate date range
     __table_args__ = (
         Index("ix_catch_up_sprint_year_status", "year_config_id", "status"),
+        CheckConstraint("start_date <= end_date", name="ck_catch_up_sprint_date_range"),
     )
 
     def __repr__(self) -> str:
+        """Return string representation of CatchUpSprint."""
         return (
             f"<CatchUpSprint {self.start_date} to {self.end_date}: "
             f"{self.target_hours} hours ({self.status.value})>"

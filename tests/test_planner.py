@@ -828,19 +828,17 @@ class TestPlannerEdgeCases:
             # Total should still be 1800
             assert abs(sum(targets.values()) - 1800) < 0.01
 
-    def test_annual_target_zero_returns_zero_per_month(self, app):
-        """Annual target of 0 should give 0 hours per month."""
+    def test_annual_target_zero_rejected_by_constraint(self, app):
+        """Annual target of 0 should be rejected by database constraint."""
+        import pytest
+        from sqlalchemy.exc import IntegrityError
+
         with app.app_context():
             year_config = YearConfig(year=2025, annual_target=0)
             db.session.add(year_config)
-            db.session.commit()
-            db.session.refresh(year_config)
-
-            targets = calculate_monthly_targets(year_config)
-
-            # All months should have 0 hours
-            assert all(targets[m] == 0.0 for m in range(1, 13))
-            assert sum(targets.values()) == 0.0
+            with pytest.raises(IntegrityError):
+                db.session.commit()
+            db.session.rollback()
 
     def test_annual_target_maximum_3000_feasibility(self, app):
         """Annual target 3000 should trigger infeasibility warnings."""

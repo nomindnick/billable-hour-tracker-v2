@@ -231,8 +231,9 @@ def calculate_monthly_targets(
 
     # Distribute target proportionally across active months
     if total_weighted == 0:
-        # Edge case: no workdays at all (unlikely but handle gracefully)
-        # Distribute evenly across months in range
+        # Edge case: no weighted workdays (all months have holidays/vacation covering all workdays,
+        # or all months set to extremely light intensity). This is unlikely in practice but must
+        # be handled to avoid division by zero. Fallback: distribute evenly across active months.
         month_count = last_month - first_month + 1
         if month_count > 0:
             hours_per_month = total_target / month_count
@@ -276,6 +277,8 @@ def calculate_monthly_targets_for_plan(
         150.0
     """
     # Determine start month for mid-year starts
+    # Only apply mid-year start if start_date falls within the configured year.
+    # If start_date is in a different year (or not set), default to January.
     start_date = year_config.start_date
     if start_date and start_date.year == year_config.year:
         start_month = start_date.month
@@ -328,6 +331,8 @@ def calculate_monthly_targets_for_plan(
             holidays, vacation_days = extract_holidays_and_vacations(year_config)
             maintenance_hours = 0.0
 
+            # Cache workday counts for maintenance months to avoid redundant calculation
+            maintenance_month_workdays: dict[int, int] = {}
             for month in range(effective_target_month + 1, 13):
                 workdays = get_workdays_in_month(
                     year_config.year,
@@ -335,7 +340,8 @@ def calculate_monthly_targets_for_plan(
                     holidays,
                     vacation_days
                 )
-                maintenance_hours += len(workdays) * plan_config.target_daily_hours_after
+                maintenance_month_workdays[month] = len(workdays)
+                maintenance_hours += maintenance_month_workdays[month] * plan_config.target_daily_hours_after
 
             # Distribute remaining hours across months up to target
             hours_before_target = remaining_target - maintenance_hours
@@ -348,15 +354,9 @@ def calculate_monthly_targets_for_plan(
                 start_month=start_month
             )
 
-            # Add maintenance months
-            for month in range(effective_target_month + 1, 13):
-                workdays = get_workdays_in_month(
-                    year_config.year,
-                    month,
-                    holidays,
-                    vacation_days
-                )
-                targets[month] = len(workdays) * plan_config.target_daily_hours_after
+            # Add maintenance months (reuse cached workday counts)
+            for month, workday_count in maintenance_month_workdays.items():
+                targets[month] = workday_count * plan_config.target_daily_hours_after
 
             return targets
         else:

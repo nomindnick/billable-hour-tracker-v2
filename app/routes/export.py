@@ -9,11 +9,15 @@ The export feature is designed for presenting billing progress in firm meetings.
 """
 
 import datetime
+from io import BytesIO
+from typing import Optional
 
 from flask import Blueprint, flash, redirect, render_template, send_file, url_for
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import YearConfig
 from app.services.export import (
+    ExportData,
     generate_chart,
     get_chart_as_base64,
     get_export_data,
@@ -22,6 +26,39 @@ from app.services.export import (
 
 # Create the blueprint
 export_bp = Blueprint('export', __name__)
+
+
+# -----------------------------------------------------------------------------
+# Helper Functions
+# -----------------------------------------------------------------------------
+
+def _get_chart_data(format: str) -> tuple[Optional[YearConfig], Optional[BytesIO], str]:
+    """
+    Get year config and generate chart data.
+
+    Args:
+        format: Chart format ('png' or 'pdf')
+
+    Returns:
+        Tuple of (year_config, chart_buffer, filename).
+        Returns (None, None, '') if year_config not found.
+    """
+    today = datetime.date.today()
+
+    # Get the year config
+    year_config = YearConfig.query.filter_by(year=today.year).first()
+
+    if not year_config:
+        return None, None, ''
+
+    # Generate export data and chart
+    export_data = get_export_data(year_config, today)
+    chart_buffer = generate_chart(export_data, format=format)
+
+    # Generate filename with date
+    filename = f"billable_hours_{year_config.year}_{today.strftime('%Y%m%d')}.{format}"
+
+    return year_config, chart_buffer, filename
 
 
 # -----------------------------------------------------------------------------
@@ -66,28 +103,22 @@ def download_png():
 
     Returns the chart as a downloadable PNG file with a descriptive filename.
     """
-    today = datetime.date.today()
+    try:
+        year_config, chart_buffer, filename = _get_chart_data('png')
 
-    # Get the year config
-    year_config = YearConfig.query.filter_by(year=today.year).first()
+        if not year_config:
+            flash('Please complete setup first to generate exports.', 'error')
+            return redirect(url_for('setup.index'))
 
-    if not year_config:
-        flash('Please complete setup first to generate exports.', 'error')
-        return redirect(url_for('setup.index'))
-
-    # Generate export data and chart
-    export_data = get_export_data(year_config, today)
-    chart_buffer = generate_chart(export_data, format='png')
-
-    # Generate filename with date
-    filename = f"billable_hours_{year_config.year}_{today.strftime('%Y%m%d')}.png"
-
-    return send_file(
-        chart_buffer,
-        mimetype='image/png',
-        as_attachment=True,
-        download_name=filename
-    )
+        return send_file(
+            chart_buffer,
+            mimetype='image/png',
+            as_attachment=True,
+            download_name=filename
+        )
+    except SQLAlchemyError:
+        flash('Unable to generate chart. Please try again.', 'error')
+        return redirect(url_for('export.index'))
 
 
 @export_bp.route('/chart.pdf')
@@ -98,25 +129,19 @@ def download_pdf():
     Returns the chart as a downloadable PDF file with a descriptive filename.
     Suitable for printing or sharing in formal settings.
     """
-    today = datetime.date.today()
+    try:
+        year_config, chart_buffer, filename = _get_chart_data('pdf')
 
-    # Get the year config
-    year_config = YearConfig.query.filter_by(year=today.year).first()
+        if not year_config:
+            flash('Please complete setup first to generate exports.', 'error')
+            return redirect(url_for('setup.index'))
 
-    if not year_config:
-        flash('Please complete setup first to generate exports.', 'error')
-        return redirect(url_for('setup.index'))
-
-    # Generate export data and chart
-    export_data = get_export_data(year_config, today)
-    chart_buffer = generate_chart(export_data, format='pdf')
-
-    # Generate filename with date
-    filename = f"billable_hours_{year_config.year}_{today.strftime('%Y%m%d')}.pdf"
-
-    return send_file(
-        chart_buffer,
-        mimetype='application/pdf',
-        as_attachment=True,
-        download_name=filename
-    )
+        return send_file(
+            chart_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+    except SQLAlchemyError:
+        flash('Unable to generate chart. Please try again.', 'error')
+        return redirect(url_for('export.index'))

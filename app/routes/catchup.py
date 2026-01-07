@@ -8,6 +8,7 @@ which help users recover from being behind on their billing plans.
 import datetime
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
 from app.models import CatchUpSprint, PlanType, SprintStatus, YearConfig
@@ -27,6 +28,15 @@ catchup_bp = Blueprint('catchup', __name__)
 
 
 # -----------------------------------------------------------------------------
+# Constants
+# -----------------------------------------------------------------------------
+
+DEFAULT_SPRINT_DURATION = 2  # Default duration in weeks for new sprints
+MIN_SPRINT_WEEKS = 1  # Minimum sprint duration
+MAX_SPRINT_WEEKS = 6  # Maximum sprint duration
+
+
+# -----------------------------------------------------------------------------
 # Helper Functions
 # -----------------------------------------------------------------------------
 
@@ -43,6 +53,27 @@ def get_plan_display_name(plan_type: PlanType) -> str:
         PlanType.OPTIMISTIC: "Optimistic",
         PlanType.REALISTIC: "Realistic"
     }.get(plan_type, str(plan_type.value))
+
+
+def _parse_sprint_form() -> tuple[str, int, float, bool]:
+    """
+    Parse sprint form values from the request.
+
+    Returns:
+        Tuple of (plan_type_str, duration_weeks, weekend_hours, include_weekends)
+    """
+    plan_type_str = request.form.get('plan_type', '')
+    duration_weeks = request.form.get(
+        'duration', type=int, default=DEFAULT_SPRINT_DURATION
+    )
+    weekend_hours = request.form.get('weekend_hours', type=float, default=0.0)
+    include_weekends = request.form.get('include_weekends') == 'on'
+
+    # Don't include weekend hours if checkbox not checked
+    if not include_weekends:
+        weekend_hours = 0.0
+
+    return plan_type_str, duration_weeks, weekend_hours, include_weekends
 
 
 # -----------------------------------------------------------------------------
@@ -131,10 +162,7 @@ def preview_sprint():
         )
 
     # Get form values
-    plan_type_str = request.form.get('plan_type', '')
-    duration_weeks = request.form.get('duration', type=int, default=2)
-    weekend_hours = request.form.get('weekend_hours', type=float, default=0.0)
-    include_weekends = request.form.get('include_weekends') == 'on'
+    plan_type_str, duration_weeks, weekend_hours, _ = _parse_sprint_form()
 
     # Parse plan type
     try:
@@ -146,10 +174,6 @@ def preview_sprint():
             error=None,
             show_placeholder=True
         )
-
-    # Don't include weekend hours if checkbox not checked
-    if not include_weekends:
-        weekend_hours = 0.0
 
     # Calculate preview
     preview = calculate_sprint_preview(
@@ -182,10 +206,7 @@ def create_sprint():
         return redirect(url_for('setup.index'))
 
     # Get form values
-    plan_type_str = request.form.get('plan_type', '')
-    duration_weeks = request.form.get('duration', type=int, default=2)
-    weekend_hours = request.form.get('weekend_hours', type=float, default=0.0)
-    include_weekends = request.form.get('include_weekends') == 'on'
+    plan_type_str, duration_weeks, weekend_hours, _ = _parse_sprint_form()
 
     # Parse plan type
     try:
@@ -193,10 +214,6 @@ def create_sprint():
     except ValueError:
         flash("Please select a valid plan to catch up on.", "error")
         return redirect(url_for('catchup.new_sprint'))
-
-    # Don't include weekend hours if checkbox not checked
-    if not include_weekends:
-        weekend_hours = 0.0
 
     # Validate plan type
     if plan_type == PlanType.FIRM:
@@ -223,7 +240,7 @@ def create_sprint():
     except ValueError as e:
         flash(str(e), "error")
         return redirect(url_for('catchup.new_sprint'))
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         flash("Something went wrong creating your sprint. Please try again.", "error")
         return redirect(url_for('catchup.new_sprint'))
@@ -257,7 +274,7 @@ def dismiss_sprint(sprint_id):
     # Mark as dismissed
     try:
         mark_sprint_dismissed(sprint)
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         flash("Something went wrong dismissing your sprint. Please try again.", "error")
         return redirect(url_for('dashboard.index'))
@@ -297,7 +314,7 @@ def complete_sprint(sprint_id):
     # Mark as completed
     try:
         mark_sprint_completed(sprint)
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         flash("Something went wrong completing your sprint. Please try again.", "error")
         return redirect(url_for('dashboard.index'))
@@ -355,7 +372,7 @@ def revise_sprint(sprint_id):
 
     # Calculate remaining weeks
     days_total = (sprint.end_date - datetime.date.today()).days + 1
-    suggested_weeks = max(1, min(6, (days_total // 7) + 1))
+    suggested_weeks = max(MIN_SPRINT_WEEKS, min(MAX_SPRINT_WEEKS, (days_total // 7) + 1))
 
     return render_template(
         'catchup/create.html',

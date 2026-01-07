@@ -34,8 +34,31 @@ views_bp = Blueprint('views', __name__)
 
 
 # -----------------------------------------------------------------------------
+# Constants
+# -----------------------------------------------------------------------------
+
+DISPLAY_PRECISION = 1  # Decimal places for displaying hours
+
+
+# -----------------------------------------------------------------------------
 # Helper Functions
 # -----------------------------------------------------------------------------
+
+def _calculate_progress_percentage(actual: float, target: float) -> float:
+    """
+    Calculate progress percentage safely with zero target handling.
+
+    Args:
+        actual: Actual hours billed
+        target: Target hours
+
+    Returns:
+        Progress percentage (0-100), capped at 100
+    """
+    if target > 0:
+        return min(100.0, (actual / target) * 100)
+    return 100.0 if actual > 0 else 0.0
+
 
 def get_month_name(month: int) -> str:
     """Get the full month name for a month number (1-12)."""
@@ -165,14 +188,14 @@ def get_calendar_data(
                 is_today_flag = date_obj == today
 
                 # Target is only relevant for workdays
-                target = round(avg_daily_target, 1) if is_work else None
+                target = round(avg_daily_target, DISPLAY_PRECISION) if is_work else None
 
                 status = get_day_status(hours, target, is_past, is_work)
                 colors = get_day_colors(status)
 
                 # Calculate difference for display
                 if hours is not None and target is not None:
-                    diff = round(hours - target, 1)
+                    diff = round(hours - target, DISPLAY_PRECISION)
                 else:
                     diff = None
 
@@ -200,7 +223,7 @@ def get_month_summary(
     month: int,
     plan_config: PlanConfig,
     today: datetime.date
-) -> dict:
+) -> dict[str, any]:
     """
     Calculate summary statistics for a month.
 
@@ -237,10 +260,7 @@ def get_month_summary(
         workdays_elapsed = 0
 
     # Calculate progress percentage
-    if target > 0:
-        progress_pct = min(100.0, (actual / target) * 100)
-    else:
-        progress_pct = 100.0 if actual > 0 else 0.0
+    progress_pct = _calculate_progress_percentage(actual, target)
 
     # Calculate difference
     diff = actual - target
@@ -249,10 +269,10 @@ def get_month_summary(
         'month_name': get_month_name(month),
         'month': month,
         'year': year,
-        'target': round(target, 1),
-        'actual': round(actual, 1),
-        'diff': round(diff, 1),
-        'progress_pct': round(progress_pct, 1),
+        'target': round(target, DISPLAY_PRECISION),
+        'actual': round(actual, DISPLAY_PRECISION),
+        'diff': round(diff, DISPLAY_PRECISION),
+        'progress_pct': round(progress_pct, DISPLAY_PRECISION),
         'workdays_total': workdays_total,
         'workdays_elapsed': workdays_elapsed,
     }
@@ -262,7 +282,7 @@ def get_history_data(
     year_config: YearConfig,
     plan_config: PlanConfig,
     today: datetime.date
-) -> dict:
+) -> dict[str, any]:
     """
     Get all entries with targets for history view.
 
@@ -305,8 +325,8 @@ def get_history_data(
             'date': entry.date,
             'day_name': entry.date.strftime('%a'),
             'hours': entry.hours_billed,
-            'target': round(daily_target, 1),
-            'diff': round(diff, 1),
+            'target': round(daily_target, DISPLAY_PRECISION),
+            'diff': round(diff, DISPLAY_PRECISION),
             'status': status,
             'month': month,
         })
@@ -324,35 +344,28 @@ def get_history_data(
         # Only include months with entries or if month is in the past
         month_start = datetime.date(year_config.year, month, 1)
         if actual > 0 or month_start <= today:
-            if target > 0:
-                progress_pct = min(100.0, (actual / target) * 100)
-            else:
-                progress_pct = 100.0 if actual > 0 else 0.0
+            progress_pct = _calculate_progress_percentage(actual, target)
 
             monthly_subtotals.append({
                 'month': month,
                 'month_name': get_month_name(month),
                 'workdays': len(workdays),
-                'target': round(target, 1),
-                'actual': round(actual, 1),
-                'diff': round(actual - target, 1),
-                'progress_pct': round(progress_pct, 1),
+                'target': round(target, DISPLAY_PRECISION),
+                'actual': round(actual, DISPLAY_PRECISION),
+                'diff': round(actual - target, DISPLAY_PRECISION),
+                'progress_pct': round(progress_pct, DISPLAY_PRECISION),
             })
 
     # YTD totals
     ytd_actual = get_hours_billed_to_date(year_config, today)
     annual_target = year_config.annual_target
-
-    if annual_target > 0:
-        ytd_pct = (ytd_actual / annual_target) * 100
-    else:
-        ytd_pct = 0.0
+    ytd_pct = _calculate_progress_percentage(ytd_actual, annual_target)
 
     ytd = {
-        'actual': round(ytd_actual, 1),
+        'actual': round(ytd_actual, DISPLAY_PRECISION),
         'target': annual_target,
-        'remaining': round(annual_target - ytd_actual, 1),
-        'progress_pct': round(ytd_pct, 1),
+        'remaining': round(annual_target - ytd_actual, DISPLAY_PRECISION),
+        'progress_pct': round(ytd_pct, DISPLAY_PRECISION),
     }
 
     return {

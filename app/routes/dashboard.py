@@ -9,6 +9,7 @@ import datetime
 from typing import Optional
 
 from flask import Blueprint, flash, redirect, render_template, url_for
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
 from app.models import CatchUpSprint, PlanConfig, PlanType, SprintStatus, YearConfig
@@ -339,7 +340,7 @@ def index():
                 )
                 active_sprint = None
                 sprint_progress = None
-            except Exception:
+            except SQLAlchemyError:
                 db.session.rollback()
                 # Continue showing the page even if auto-complete fails
 

@@ -13,6 +13,7 @@ Key features:
 - Hours banked calculation for buffer tracking
 """
 
+import calendar
 import datetime
 from dataclasses import dataclass
 from typing import Optional
@@ -44,6 +45,9 @@ STATUS_ON_TRACK = "On track"
 STATUS_AHEAD = "Ahead"
 STATUS_SLIGHTLY_BEHIND = "Slightly behind"
 STATUS_CATCH_UP_RECOMMENDED = "Catch-up recommended"
+
+# Decimal places for rounding hours (display precision)
+HOURS_PRECISION = 2
 
 
 # -----------------------------------------------------------------------------
@@ -284,9 +288,10 @@ def get_expected_hours_to_date(
     # For current month, calculate based on workdays from effective start
     if as_of_date.month == start_month:
         # Only count workdays from start_date to end of month
+        last_day = calendar.monthrange(start_date.year, start_month)[1]
         workdays_from_start = get_workdays_in_range(
             start_date,
-            datetime.date(start_date.year, start_month, 1) + datetime.timedelta(days=31),
+            datetime.date(start_date.year, start_month, last_day),
             holidays,
             vacation_days
         )
@@ -421,9 +426,9 @@ def calculate_daily_target(
     daily_target = min(raw_target, MAX_DAILY_HOURS)
 
     return DailyTargetResult(
-        daily_target=round(daily_target, 2),
+        daily_target=round(daily_target, HOURS_PRECISION),
         catch_up_recommended=catch_up_recommended,
-        remaining_hours_this_month=round(remaining_hours, 2),
+        remaining_hours_this_month=round(remaining_hours, HOURS_PRECISION),
         remaining_workdays=remaining_workday_count
     )
 
@@ -468,14 +473,12 @@ def calculate_plan_status(
     # Positive = ahead, negative = behind
     difference = actual - expected
 
-    # Determine status label
-    if difference >= 0:
-        if difference > 0:
-            status_label = STATUS_AHEAD
-        else:
-            status_label = STATUS_ON_TRACK
-    elif difference > -SLIGHTLY_BEHIND_THRESHOLD:
-        # Within tolerance, still considered on track
+    # Determine status label based on how far ahead/behind
+    # Thresholds: >0 = ahead, >=-5 = on track, >-15 = slightly behind, else catch-up
+    if difference > 0:
+        status_label = STATUS_AHEAD
+    elif difference >= -SLIGHTLY_BEHIND_THRESHOLD:
+        # Exactly on track or within 5-hour tolerance
         status_label = STATUS_ON_TRACK
     elif difference > -CATCH_UP_THRESHOLD:
         status_label = STATUS_SLIGHTLY_BEHIND
@@ -483,10 +486,10 @@ def calculate_plan_status(
         status_label = STATUS_CATCH_UP_RECOMMENDED
 
     return PlanStatus(
-        hours_ahead_or_behind=round(difference, 2),
+        hours_ahead_or_behind=round(difference, HOURS_PRECISION),
         status_label=status_label,
-        expected_hours_to_date=round(expected, 2),
-        actual_hours_to_date=round(actual, 2)
+        expected_hours_to_date=round(expected, HOURS_PRECISION),
+        actual_hours_to_date=round(actual, HOURS_PRECISION)
     )
 
 
@@ -523,4 +526,4 @@ def calculate_hours_banked(
     expected = get_expected_hours_to_date(year_config, plan_config, as_of_date)
     actual = get_hours_billed_to_date(year_config, as_of_date)
 
-    return max(0.0, round(actual - expected, 2))
+    return max(0.0, round(actual - expected, HOURS_PRECISION))

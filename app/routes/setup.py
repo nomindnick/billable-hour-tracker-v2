@@ -11,6 +11,7 @@ import calendar
 import json
 
 from flask import Blueprint, flash, make_response, redirect, render_template, request, url_for
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
 from app.models import (
@@ -27,6 +28,10 @@ from app.models import (
 
 # Create the setup blueprint
 setup_bp = Blueprint('setup', __name__)
+
+# Validation constants
+MAX_NAME_LENGTH = 100  # Maximum length for holiday names and vacation notes
+MAX_HOURS_PER_MONTH = 300.0  # Reasonable maximum hours for a single month entry
 
 
 @setup_bp.route('/')
@@ -137,7 +142,7 @@ def save_year():
 
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         flash('Something went wrong saving your configuration. Please try again.', 'error')
         return redirect(url_for('setup.index'))
@@ -231,6 +236,10 @@ def save_midyear():
     if entry_mode == 'lump':
         # Get lump sum hours
         hours_pre_start = request.form.get('hours_pre_start', type=float) or 0.0
+        # Validate hours are within reasonable bounds
+        if hours_pre_start < 0 or hours_pre_start > year_config.annual_target:
+            flash('Hours must be between 0 and your annual target.', 'error')
+            return redirect(url_for('setup.midyear'))
         year_config.hours_pre_start = hours_pre_start
 
         # Clear any existing monthly data
@@ -246,6 +255,8 @@ def save_midyear():
         start_month = year_config.start_date.month
         for month_num in range(1, start_month):
             hours = request.form.get(f'month_{month_num}', type=float) or 0.0
+            # Clamp hours to valid range (server-side validation)
+            hours = max(0.0, min(hours, MAX_HOURS_PER_MONTH))
             if hours > 0:
                 hist_month = HistoricalMonth(
                     year_config_id=year_config.id,
@@ -256,7 +267,7 @@ def save_midyear():
 
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         flash('Something went wrong saving your historical hours. Please try again.', 'error')
         return redirect(url_for('setup.midyear'))
@@ -273,30 +284,11 @@ def midyear_form():
     entry_mode = request.args.get('entry_mode', 'lump')
 
     if entry_mode == 'lump':
-        # Return lump sum form
-        return f'''
-        <div>
-            <label for="hours_pre_start" class="block text-sm font-medium text-gray-700 mb-1">
-                Total hours billed before start date
-            </label>
-            <div class="relative">
-                <input
-                    type="number"
-                    id="hours_pre_start"
-                    name="hours_pre_start"
-                    value="{year_config.hours_pre_start or 0}"
-                    min="0"
-                    max="{year_config.annual_target}"
-                    step="0.5"
-                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                <span class="absolute right-3 top-2 text-gray-500">hours</span>
-            </div>
-            <p class="mt-1 text-sm text-gray-500">
-                Enter the total hours you've billed so far in {year_config.year}.
-            </p>
-        </div>
-        '''
+        # Return lump sum form (using template instead of hardcoded HTML)
+        return render_template(
+            'setup/partials/midyear_lump_form.html',
+            year_config=year_config
+        )
     else:
         # Return monthly entry grid
         return redirect(url_for('setup.midyear_months'))
@@ -386,6 +378,9 @@ def add_holiday():
     # Parse the date
     date_str = request.form.get('date')
     name = request.form.get('name', '').strip() or None
+    # Truncate name to maximum length (server-side validation)
+    if name and len(name) > MAX_NAME_LENGTH:
+        name = name[:MAX_NAME_LENGTH]
 
     if not date_str:
         response = make_response('', 400)
@@ -433,7 +428,7 @@ def add_holiday():
     db.session.add(holiday)
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         response = make_response('', 500)
         response.headers['HX-Trigger'] = json.dumps({
@@ -456,7 +451,7 @@ def delete_holiday(holiday_id: int):
     db.session.delete(holiday)
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         return '<div class="text-red-600 text-sm">Failed to delete. Please try again.</div>', 500
 
@@ -515,7 +510,7 @@ def add_common_holidays():
 
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         response = make_response('', 500)
         response.headers['HX-Trigger'] = json.dumps({
@@ -528,12 +523,8 @@ def add_common_holidays():
         year_config_id=year_config.id
     ).order_by(Holiday.date).all()
 
-    # Return all holiday items as HTML
-    html_parts = []
-    for holiday in holidays_list:
-        html_parts.append(render_template('setup/partials/holiday_item.html', holiday=holiday))
-
-    return ''.join(html_parts)
+    # Return all holiday items as HTML (using single template render)
+    return render_template('setup/partials/holiday_items.html', holidays=holidays_list)
 
 
 def _get_nth_weekday(year: int, month: int, weekday: int, n: int) -> datetime.date:
@@ -633,6 +624,9 @@ def add_vacation():
     # Parse the date
     date_str = request.form.get('date')
     note = request.form.get('note', '').strip() or None
+    # Truncate note to maximum length (server-side validation)
+    if note and len(note) > MAX_NAME_LENGTH:
+        note = note[:MAX_NAME_LENGTH]
 
     if not date_str:
         response = make_response('', 400)
@@ -680,7 +674,7 @@ def add_vacation():
     db.session.add(vacation)
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         response = make_response('', 500)
         response.headers['HX-Trigger'] = json.dumps({
@@ -703,7 +697,7 @@ def delete_vacation(vacation_id: int):
     db.session.delete(vacation)
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         return '<div class="text-red-600 text-sm">Failed to delete. Please try again.</div>', 500
 
@@ -933,7 +927,7 @@ def save_plans():
 
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         flash('Something went wrong saving your plans. Please try again.', 'error')
         return redirect(url_for('setup.plans'))
@@ -985,7 +979,7 @@ def update_intensity(month: int):
         month_config.intensity = IntensityLevel(intensity_str)
         try:
             db.session.commit()
-        except Exception:
+        except SQLAlchemyError:
             db.session.rollback()
             response = make_response('', 500)
             response.headers['HX-Trigger'] = json.dumps({
@@ -1039,7 +1033,7 @@ def apply_intensity_preset():
 
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         response = make_response('', 500)
         response.headers['HX-Trigger'] = json.dumps({

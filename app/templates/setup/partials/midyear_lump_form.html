@@ -1,0 +1,21 @@
+<div>
+    <label for="hours_pre_start" class="block text-sm font-medium text-gray-700 mb-1">
+        Total hours billed before start date
+    </label>
+    <div class="relative">
+        <input
+            type="number"
+            id="hours_pre_start"
+            name="hours_pre_start"
+            value="{{ year_config.hours_pre_start or 0 }}"
+            min="0"
+            max="{{ year_config.annual_target }}"
+            step="0.5"
+            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+        >
+        <span class="absolute right-3 top-2 text-gray-500">hours</span>
+    </div>
+    <p class="mt-1 text-sm text-gray-500">
+        Enter the total hours you've billed so far in {{ year_config.year }}.
+    </p>
+</div>

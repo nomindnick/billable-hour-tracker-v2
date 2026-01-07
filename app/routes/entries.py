@@ -9,6 +9,7 @@ import datetime
 from typing import Optional
 
 from flask import Blueprint, flash, jsonify, make_response, redirect, render_template, request, url_for
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
 from app.models import DailyEntry, PlanConfig, PlanType, YearConfig
@@ -23,10 +24,32 @@ from app.services.planner import calculate_monthly_targets_for_plan
 # Create the entries blueprint
 entries_bp = Blueprint('entries', __name__, url_prefix='/entries')
 
+# Constants
+DEFAULT_DAILY_TARGET = 7.5  # Default daily target when no plan configured
+
 
 # -----------------------------------------------------------------------------
 # Helper Functions
 # -----------------------------------------------------------------------------
+
+def _validate_hours(hours_str: str) -> tuple[float | None, str | None]:
+    """
+    Validate and parse hours input string.
+
+    Args:
+        hours_str: The hours value as a string from form input.
+
+    Returns:
+        Tuple of (hours, error_message). If validation succeeds, error_message is None.
+        If validation fails, hours is None and error_message contains the error.
+    """
+    try:
+        hours = float(hours_str)
+        if hours < 0 or hours > 24:
+            return None, "Please enter valid hours (0-24)."
+        return hours, None
+    except (ValueError, TypeError):
+        return None, "Please enter valid hours (0-24)."
 
 def get_current_year_config() -> Optional[YearConfig]:
     """
@@ -144,7 +167,7 @@ def get_recent_entries(year_config: YearConfig, days: int = 7) -> list[dict]:
             target_result = calculate_daily_target(year_config, realistic_plan, date)
             target = target_result.daily_target
         else:
-            target = 7.5  # Default fallback
+            target = DEFAULT_DAILY_TARGET
 
         is_weekend = date.weekday() >= 5
 
@@ -206,14 +229,11 @@ def create_entry():
         return redirect(url_for('dashboard.index'))
 
     # Validate hours
-    try:
-        hours = float(hours_str)
-        if hours < 0 or hours > 24:
-            raise ValueError("Hours must be between 0 and 24")
-    except (ValueError, TypeError):
+    hours, error_msg = _validate_hours(hours_str)
+    if error_msg:
         if request.headers.get('HX-Request'):
-            return '<div class="text-red-600">Please enter valid hours (0-24).</div>', 400
-        flash('Please enter valid hours (0-24).', 'error')
+            return f'<div class="text-red-600">{error_msg}</div>', 400
+        flash(error_msg, 'error')
         return redirect(url_for('dashboard.index'))
 
     # Check if entry exists for this date
@@ -236,7 +256,7 @@ def create_entry():
 
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         if request.headers.get('HX-Request'):
             return '<div class="text-red-600 p-4">Something went wrong saving your entry. Please try again.</div>', 500
@@ -309,21 +329,18 @@ def update_entry(entry_id: int):
 
     # Validate hours
     hours_str = request.form.get('hours', '')
-    try:
-        hours = float(hours_str)
-        if hours < 0 or hours > 24:
-            raise ValueError("Hours must be between 0 and 24")
-    except (ValueError, TypeError):
+    hours, error_msg = _validate_hours(hours_str)
+    if error_msg:
         if request.headers.get('HX-Request'):
-            return '<div class="text-red-600">Please enter valid hours (0-24).</div>', 400
-        flash('Please enter valid hours (0-24).', 'error')
+            return f'<div class="text-red-600">{error_msg}</div>', 400
+        flash(error_msg, 'error')
         return redirect(url_for('dashboard.index'))
 
     # Update the entry
     entry.hours_billed = hours
     try:
         db.session.commit()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         if request.headers.get('HX-Request'):
             return '<div class="text-red-600 p-4">Something went wrong updating your entry. Please try again.</div>', 500
@@ -339,7 +356,7 @@ def update_entry(entry_id: int):
         target_result = calculate_daily_target(year_config, realistic_plan, entry.date)
         target = target_result.daily_target
     else:
-        target = 7.5
+        target = DEFAULT_DAILY_TARGET
 
     is_weekend = entry.date.weekday() >= 5
     is_today = entry.date == datetime.date.today()
@@ -438,7 +455,7 @@ def edit_entry_form(entry_id: int):
         target_result = calculate_daily_target(year_config, realistic_plan, entry.date)
         target = target_result.daily_target
     else:
-        target = 7.5
+        target = DEFAULT_DAILY_TARGET
 
     # Check if this is a quick entry edit (from hero section)
     context = request.args.get('context', '')

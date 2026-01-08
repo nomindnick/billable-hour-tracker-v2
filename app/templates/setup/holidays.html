@@ -126,7 +126,7 @@
                 <span class="text-sm font-normal text-gray-500">({{ holidays|length }} added)</span>
             </h2>
 
-            <div id="holidays-list" class="space-y-0 divide-y divide-gray-100">
+            <div id="holidays-list" class="space-y-0 divide-y divide-gray-100" aria-live="polite">
                 {% if holidays %}
                     {% for holiday in holidays %}
                         {% include "setup/partials/holiday_item.html" %}
@@ -176,10 +176,31 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Toast notification container -->
+<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2" aria-live="assertive"></div>
+
 <script>
+    // Show toast notification instead of alert
+    function showToast(message, type = 'error') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${
+            type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'
+        }`;
+        toast.setAttribute('role', 'alert');
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        // Auto-dismiss after 4 seconds
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
     // Handle HTMX errors via HX-Trigger
     document.body.addEventListener('showError', function(evt) {
-        alert(evt.detail.value || 'An error occurred');
+        showToast(evt.detail.value || 'An error occurred', 'error');
     });
 
     // Remove empty state when first item is added

@@ -10,6 +10,7 @@ Used by: GET /entries/<id>/edit (HTMX response)
 <form hx-post="{{ url_for('entries.update_entry', entry_id=entry.id) }}"
       hx-target="#entry-row-{{ entry.date.isoformat() }}"
       hx-swap="outerHTML"
+      hx-indicator="#entry-edit-spinner-{{ entry.date.isoformat() }}"
       class="flex items-center justify-between py-2 px-3 bg-white border-2 border-primary-300 rounded-lg shadow-sm">
 
     <!-- Date and Target Info -->
@@ -34,7 +35,13 @@ Used by: GET /entries/<id>/edit (HTMX response)
 
         <!-- Save Button -->
         <button type="submit"
-                class="px-3 py-1 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 focus:ring-2 focus:ring-primary-500">
+                class="px-3 py-1 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 inline-flex items-center">
+            <span id="entry-edit-spinner-{{ entry.date.isoformat() }}" class="htmx-indicator mr-1">
+                <svg class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </span>
             Save
         </button>
 

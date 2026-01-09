@@ -34,6 +34,9 @@ pytest tests/
 - `routes/dashboard.py` - Main daily interface (`/`)
 - `routes/setup.py` - Year configuration wizard (`/setup/*`)
 - `routes/entries.py` - Daily hour logging (`/entries/*`)
+- `routes/views.py` - Monthly calendar and history views (`/monthly/*`, `/history`)
+- `routes/catchup.py` - Catch-up sprint management (`/catchup/*`)
+- `routes/export.py` - Chart generation and download (`/export/*`)
 
 **Services (business logic):**
 - `services/planner.py` - Monthly target distribution algorithm
@@ -46,7 +49,9 @@ pytest tests/
 
 ## Implementation Status
 
-See `IMPLEMENTATION_PLAN.md` for sprint-by-sprint tasks. Check sprint checkboxes and "Sprint Update" sections for current progress.
+See `IMPLEMENTATION_PLAN.md` for original sprint-by-sprint implementation tasks.
+
+See `CODE_REVIEW_PLAN.md` for the comprehensive code review (52 sprints covering spec traceability, test expansion, integration testing, and code quality). The review added 340+ tests and fixed 40+ issues.
 
 ## Code Style
 

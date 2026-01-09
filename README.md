@@ -131,6 +131,8 @@ billable-hour-tracker-v2/
 
 ### Running Tests
 
+The project has a comprehensive test suite with **520 tests** covering models, services, routes, and integration scenarios.
+
 ```bash
 # Activate virtual environment
 source venv/bin/activate
